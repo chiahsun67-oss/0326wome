@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麥頭印標系統 - 實務確認畫面</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green:'';
+  --g1:#1a5c35; --g2:#2e8b57; --g3:#e8f5ee; --g4:#f0faf4;
+  --blue:#1f4e79; --sky:#deeaf1;
+  --ink:#1a2e1a; --mid:#4a6a50; --soft:#8aaa90; --faint:#c8dcc8;
+  --bg:#f7faf7; --white:#ffffff;
+  --warn:#f59e0b; --warnbg:#fffbeb; --warnbd:#fde68a;
+  --err:#dc2626; --errbg:#fef2f2; --errbd:#fecaca;
+  --radius:10px; --shadow:0 2px 12px rgba(30,92,53,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--ink);font-size:13.5px;line-height:1.6;}
+
+/* ── TOP BAR ── */
+.topbar{background:var(--g1);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.topbar-brand{display:flex;align-items:center;gap:12px;}
+.brand-icon{width:34px;height:34px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.brand-text{color:#fff;font-weight:700;font-size:15px;letter-spacing:.03em;}
+.brand-sub{color:rgba(255,255,255,.6);font-size:11px;margin-top:1px;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.uat-badge{background:var(--warn);color:#7c2d00;font-weight:700;font-size:11px;padding:4px 10px;border-radius:20px;letter-spacing:.05em;}
+.user-pill{background:rgba(255,255,255,.12);color:#fff;font-size:12px;padding:5px 12px;border-radius:20px;}
+
+/* ── STEP NAV ── */
+.step-nav{background:var(--white);border-bottom:1px solid var(--faint);padding:0 28px;display:flex;gap:0;overflow-x:auto;}
+.step-tab{padding:14px 22px;font-size:13px;color:var(--soft);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:7px;}
+.step-tab:hover{color:var(--g2);background:var(--g4);}
+.step-tab.active{color:var(--g1);border-bottom-color:var(--g1);font-weight:700;}
+.step-num{width:20px;height:20px;border-radius:50%;background:var(--faint);color:var(--mid);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.step-tab.active .step-num{background:var(--g1);color:#fff;}
+
+/* ── LAYOUT ── */
+.layout{display:flex;min-height:calc(100vh - 100px);}
+.sidebar{width:240px;flex-shrink:0;background:var(--white);border-right:1px solid var(--faint);padding:20px 0;}
+.content{flex:1;padding:24px 28px;overflow-y:auto;max-width:1100px;}
+
+/* ── SIDEBAR ── */
+.sb-section{margin-bottom:24px;}
+.sb-label{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--soft);text-transform:uppercase;padding:0 18px;margin-bottom:8px;}
+.sb-item{display:flex;align-items:center;gap:8px;padding:9px 18px;cursor:pointer;font-size:12.5px;color:var(--mid);transition:all .15s;border-left:3px solid transparent;}
+.sb-item:hover{background:var(--g4);color:var(--g1);}
+.sb-item.active{background:var(--g3);color:var(--g1);border-left-color:var(--g1);font-weight:600;}
+.sb-dot{width:7px;height:7px;border-radius:50%;background:var(--faint);}
+.sb-item.active .sb-dot{background:var(--g2);}
+
+/* ── UAT NOTICE ── */
+.uat-notice{background:var(--warnbg);border:1px solid var(--warnbd);border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;}
+.uat-notice-icon{font-size:20px;flex-shrink:0;margin-top:1px;}
+.uat-notice-text{font-size:13px;color:#78350f;line-height:1.7;}
+.uat-notice-text strong{color:#92400e;}
+
+/* ── PAGE TITLE ── */
+.page-title{margin-bottom:20px;}
+.page-title h2{font-size:20px;font-weight:700;color:var(--g1);display:flex;align-items:center;gap:8px;}
+.page-title p{color:var(--mid);font-size:13px;margin-top:5px;}
+.module-tag{background:var(--g1);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:.05em;}
+
+/* ── STEP GUIDE ── */
+.step-guide{display:flex;gap:0;margin-bottom:24px;background:var(--white);border:1px solid var(--faint);border-radius:var(--radius);overflow:hidden;}
+.sg-step{flex:1;padding:14px 16px;border-right:1px solid var(--faint);position:relative;}
+.sg-step:last-child{border-right:none;}
+.sg-step.current{background:var(--g3);}
+.sg-step.done{background:var(--g4);}
+.sg-num{font-size:10px;font-weight:700;color:var(--soft);margin-bottom:3px;}
+.sg-step.current .sg-num{color:var(--g2);}
+.sg-step.done .sg-num{color:var(--g2);}
+.sg-title{font-size:12px;font-weight:600;color:var(--ink);}
+.sg-step.current .sg-title{color:var(--g1);}
+.sg-arrow{position:absolute;right:-8px;top:50%;transform:translateY(-50%);width:16px;height:16px;background:var(--white);border:1px solid var(--faint);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--soft);z-index:1;}
+.sg-step.done .sg-arrow{background:var(--g2);border-color:var(--g2);color:#fff;}
+
+/* ── CARDS ── */
+.card{background:var(--white);border:1px solid var(--faint);border-radius:var(--radius);margin-bottom:16px;box-shadow:var(--shadow);}
+.card-header{padding:13px 18px;border-bottom:1px solid var(--faint);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(to right,var(--g4),var(--white));}
+.card-title{font-size:13.5px;font-weight:700;color:var(--g1);display:flex;align-items:center;gap:8px;}
+.card-body{padding:18px;}
+
+/* ── FIELD LAYOUT ── */
+.form-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;}
+.form-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
+.form-row-2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;}
+.form-row-5{display:grid;grid-template-columns:160px 1fr 1fr 1fr 1fr;gap:12px;margin-bottom:14px;}
+.col2{grid-column:span 2;}
+.col3{grid-column:span 3;}
+
+.field{display:flex;flex-direction:column;gap:5px;position:relative;}
+.field-label{font-size:12px;font-weight:600;color:var(--mid);display:flex;align-items:center;gap:5px;}
+.req{color:var(--err);font-size:13px;}
+.field-hint{font-size:11px;color:var(--soft);margin-top:3px;}
+
+input[type=text],input[type=number],input[type=date],select{
+  background:#fff;border:1.5px solid var(--faint);color:var(--ink);
+  padding:8px 11px;border-radius:7px;font-size:12.5px;
+  font-family:inherit;width:100%;outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+input:focus,select:focus{border-color:var(--g2);box-shadow:0 0 0 3px rgba(46,139,87,.1);}
+input[readonly]{background:var(--g4);color:var(--mid);cursor:default;}
+input.auto-filled{background:#eff9f4;border-color:#88ccaa;color:var(--g1);font-weight:600;}
+input.demo{background:#f8fbff;border-color:#aac8e8;color:var(--blue);}
+
+/* ── INPUT GROUP (FIND) ── */
+.input-group{display:flex;gap:6px;}
+.input-group input{flex:1;}
+.find-btn{padding:8px 14px;background:var(--g1);border:none;color:#fff;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;transition:all .15s;font-family:inherit;}
+.find-btn:hover{background:var(--g2);}
+
+/* ── EXPIRY SECTION ── */
+.expiry-box{background:var(--warnbg);border:1.5px solid var(--warnbd);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;}
+.expiry-title{font-size:12.5px;font-weight:700;color:#92400e;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.expiry-rule{font-size:11.5px;color:#78350f;background:#fff;border:1px solid var(--warnbd);border-radius:6px;padding:7px 12px;margin-bottom:12px;}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;}
+.tbl thead th{padding:9px 10px;font-size:11.5px;font-weight:700;color:var(--g1);text-align:left;border-bottom:2px solid var(--g2);background:var(--g3);}
+.tbl tbody td{padding:7px 9px;border-bottom:1px solid var(--faint);font-size:12.5px;vertical-align:middle;}
+.tbl tbody tr:hover td{background:var(--g4);}
+.tbl input{padding:5px 8px;font-size:12px;}
+.tbl .row-no{font-size:11px;color:var(--soft);width:32px;text-align:center;}
+.del-row-btn{background:none;border:none;color:var(--faint);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;transition:all .15s;}
+.del-row-btn:hover{color:var(--err);background:var(--errbg);}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:all .15s;font-family:inherit;white-space:nowrap;}
+.btn-primary{background:var(--g1);color:#fff;border-color:var(--g1);}
+.btn-primary:hover{background:var(--g2);}
+.btn-outline{background:#fff;color:var(--g1);border-color:var(--g2);}
+.btn-outline:hover{background:var(--g3);}
+.btn-ghost{background:transparent;color:var(--mid);border-color:var(--faint);}
+.btn-ghost:hover{border-color:var(--mid);color:var(--ink);}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.btn-bar{display:flex;gap:10px;align-items:center;padding:16px 0 0;border-top:1px solid var(--faint);margin-top:8px;}
+
+/* ── CALLOUT TIPS ── */
+.tip{display:flex;gap:10px;align-items:flex-start;background:var(--sky);border:1px solid #b8d4e8;border-radius:8px;padding:11px 14px;margin-bottom:14px;}
+.tip-icon{font-size:16px;flex-shrink:0;}
+.tip-text{font-size:12.5px;color:var(--blue);line-height:1.7;}
+.tip-text strong{color:var(--g1);}
+
+/* ── CONFIRM CHECKLIST ── */
+.confirm-list{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+.confirm-item{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--white);border:1.5px solid var(--faint);border-radius:8px;cursor:pointer;transition:all .15s;}
+.confirm-item:hover{border-color:var(--g2);background:var(--g4);}
+.confirm-item.checked{border-color:var(--g2);background:var(--g3);}
+.confirm-cb{width:20px;height:20px;border:2px solid var(--faint);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:all .15s;}
+.confirm-item.checked .confirm-cb{background:var(--g1);border-color:var(--g1);color:#fff;}
+.confirm-content{flex:1;}
+.confirm-title{font-size:13px;font-weight:600;color:var(--ink);}
+.confirm-desc{font-size:12px;color:var(--mid);margin-top:3px;}
+.confirm-item.checked .confirm-title{color:var(--g1);}
+
+/* ── STATUS BADGE ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-ok{background:var(--g3);color:var(--g1);border:1px solid #b0d8b8;}
+.badge-warn{background:var(--warnbg);color:#92400e;border:1px solid var(--warnbd);}
+.badge-new{background:var(--sky);color:var(--blue);border:1px solid #b8d4e8;}
+.badge-pending{background:var(--faint);color:var(--mid);border:1px solid #d0d0d0;}
+
+/* ── LABEL PREVIEW ── */
+.label-preview-wrap{display:flex;gap:24px;align-items:flex-start;}
+.label-card{background:#fff;border:2px solid #ddd;border-radius:6px;padding:16px;width:200px;flex-shrink:0;box-shadow:0 4px 20px rgba(0,0,0,.12);font-family:'Noto Sans TC',monospace;font-size:11.5px;line-height:1.7;color:#000;}
+.label-card .lc-code{font-size:17px;font-weight:900;letter-spacing:.02em;margin-bottom:2px;}
+.label-card .lc-name{font-size:12px;padding-bottom:8px;border-bottom:1.5px solid #ddd;margin-bottom:8px;}
+.label-card .lc-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;}
+.label-card .lc-barcode{text-align:center;margin:10px 0 4px;font-size:32px;font-weight:900;letter-spacing:4px;line-height:1;}
+.label-card .lc-barcode-text{text-align:center;font-size:10px;letter-spacing:1px;}
+.label-card .lc-stamp{text-align:right;font-size:10px;color:#888;margin-top:8px;padding-top:6px;border-top:1px dashed #ddd;}
+.label-annot{flex:1;}
+.annot-row{display:flex;gap:8px;margin-bottom:10px;align-items:flex-start;}
+.annot-dot{width:8px;height:8px;border-radius:50%;background:var(--g2);flex-shrink:0;margin-top:5px;}
+.annot-text{font-size:12.5px;color:var(--ink);line-height:1.6;}
+.annot-text strong{color:var(--g1);}
+
+/* ── DROPZONE ── */
+.dropzone{border:2.5px dashed var(--faint);border-radius:var(--radius);padding:36px 24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--g4);}
+.dropzone:hover{border-color:var(--g2);background:var(--g3);}
+.dropzone-icon{font-size:40px;margin-bottom:10px;}
+.dropzone-text{font-size:14px;font-weight:600;color:var(--g1);}
+.dropzone-sub{font-size:12px;color:var(--soft);margin-top:5px;}
+
+/* ── IMPORT PREVIEW ── */
+.import-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.import-tbl th{padding:7px 10px;background:var(--g3);color:var(--g1);font-weight:700;border:1px solid var(--faint);font-size:11.5px;}
+.import-tbl td{padding:7px 10px;border:1px solid var(--faint);}
+.import-tbl tr.row-ok td:first-child{border-left:3px solid var(--g2);}
+.import-tbl tr.row-warn td:first-child{border-left:3px solid var(--warn);background:var(--warnbg);}
+.import-tbl tr.row-err td:first-child{border-left:3px solid var(--err);}
+.import-tbl tr.row-err td{background:var(--errbg);}
+.auto-calc-cell{color:var(--blue);font-style:italic;font-weight:600;}
+
+/* ── HISTORY TABLE ── */
+.hist-tbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+.hist-tbl th{padding:9px 12px;background:var(--g3);color:var(--g1);font-weight:700;border-bottom:2px solid var(--g2);text-align:left;}
+.hist-tbl td{padding:9px 12px;border-bottom:1px solid var(--faint);}
+.hist-tbl tr:hover td{background:var(--g4);}
+.hist-tbl tr.dup td{background:var(--warnbg);}
+
+/* ── STATS ── */
+.stats-row{display:flex;gap:14px;margin-bottom:20px;}
+.stat-card{background:var(--white);border:1.5px solid var(--faint);border-radius:var(--radius);padding:16px 20px;flex:1;box-shadow:var(--shadow);}
+.stat-num{font-size:26px;font-weight:900;color:var(--g1);font-family:'Noto Serif TC',serif;}
+.stat-label{font-size:12px;color:var(--soft);margin-top:3px;}
+
+/* ── CONFIRM FOOTER ── */
+.confirm-footer{background:var(--white);border-top:2px solid var(--g2);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;bottom:0;box-shadow:0 -2px 12px rgba(0,0,0,.06);}
+.cf-left{font-size:13px;color:var(--mid);}
+.cf-left strong{color:var(--g1);}
+.cf-actions{display:flex;gap:10px;}
+
+.hidden{display:none!important;}
+.mono{font-family:'Courier New',monospace;font-size:12px;}
+.divider{height:1px;background:var(--faint);margin:20px 0;}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-icon">🏷</div>
+    <div>
+      <div class="brand-text">MIS 倉儲管理系統</div>
+      <div class="brand-sub">WMSM 麥頭印標作業</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="uat-badge">📋 實務確認版</div>
+    <div class="user-pill">👤 倉儲人員</div>
+  </div>
+</div>
+
+<!-- STEP NAV -->
+<div class="step-nav">
+  <div class="step-tab active" onclick="switchModule('m020')" id="tab-m020">
+    <span class="step-num">1</span> WMSM020 套印作業
+  </div>
+  <div class="step-tab" onclick="switchModule('m030')" id="tab-m030">
+    <span class="step-num">2</span> WMSM030 Excel 匯入
+  </div>
+  <div class="step-tab" onclick="switchModule('label')" id="tab-label">
+    <span class="step-num">3</span> 標籤樣式確認
+  </div>
+  <div class="step-tab" onclick="switchModule('history')" id="tab-history">
+    <span class="step-num">4</span> 列印紀錄查詢
+  </div>
+  <div class="step-tab" onclick="switchModule('confirm')" id="tab-confirm">
+    <span class="step-num">✓</span> 確認簽核
+  </div>
+</div>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-section">
+      <div class="sb-label">進貨作業</div>
+      <div class="sb-item active" onclick="switchModule('m020')" id="sb-m020"><span class="sb-dot"></span> 麥頭標籤套印</div>
+      <div class="sb-item" onclick="switchModule('m030')" id="sb-m030"><span class="sb-dot"></span> Excel 批次匯入</div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">標籤與紀錄</div>
+      <div class="sb-item" onclick="switchModule('label')" id="sb-label"><span class="sb-dot"></span> 標籤樣式確認</div>
+      <div class="sb-item" onclick="switchModule('history')" id="sb-history"><span class="sb-dot"></span> 列印紀錄查詢</div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-label">驗收</div>
+      <div class="sb-item" onclick="switchModule('confirm')" id="sb-confirm"><span class="sb-dot"></span> 確認簽核</div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ══════════════════════════════
+         PAGE: WMSM020
+         ══════════════════════════════ -->
+    <div id="page-m020">
+      <div class="uat-notice">
+        <div class="uat-notice-icon">📋</div>
+        <div class="uat-notice-text">
+          <strong>實務確認說明：</strong>此畫面為 WMSM020 套印作業的功能展示。請依照實際作業流程逐步操作，確認每個欄位名稱、必填規則、及自動計算是否符合需求。如有問題請在下方簽核頁面標注。
+        </div>
+      </div>
+
+      <div class="page-title">
+        <h2><span class="module-tag">WMSM020</span> 進貨麥頭標籤套印作業</h2>
+        <p>適用情境：進貨時手動輸入商品資料，或透過採購單號批次帶入，產生並列印麥頭標籤。</p>
+      </div>
+
+      <!-- 操作步驟 -->
+      <div class="step-guide">
+        <div class="sg-step done">
+          <div class="sg-num">步驟 1</div>
+          <div class="sg-title">輸入採購單號</div>
+          <div class="sg-arrow">✓</div>
+        </div>
+        <div class="sg-step current">
+          <div class="sg-num">步驟 2</div>
+          <div class="sg-title">填寫商品資料</div>
+          <div class="sg-arrow">›</div>
+        </div>
+        <div class="sg-step">
+          <div class="sg-num">步驟 3</div>
+          <div class="sg-title">填寫效期</div>
+          <div class="sg-arrow">›</div>
+        </div>
+        <div class="sg-step">
+          <div class="sg-num">步驟 4</div>
+          <div class="sg-title">確認張數列印</div>
+        </div>
+      </div>
+
+      <div class="tip">
+        <div class="tip-icon">💡</div>
+        <div class="tip-text"><strong>有採購單號時：</strong>直接輸入採購單號並按「查詢」，系統會自動帶入商品清單，不需要一筆一筆手動輸入。<br><strong>無採購單號時：</strong>按「新增列」手動逐筆輸入。</div>
+      </div>
+
+      <!-- 採購單查詢 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🔍 採購單查詢（選填）</div>
+          <span class="badge badge-new">可略過，直接手動填寫</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row-5">
+            <div class="field">
+              <div class="field-label">採購單號</div>
+              <div class="input-group">
+                <input type="text" value="PO-20250311-001" class="demo">
+                <button class="find-btn" onclick="doFind()">🔍 查詢</button>
+              </div>
+              <div class="field-hint">格式：PO-YYYYMMDD-NNN</div>
+            </div>
+            <div class="field">
+              <div class="field-label">進貨日期</div>
+              <input type="date" value="2025-03-11">
+            </div>
+            <div class="field">
+              <div class="field-label">供應商</div>
+              <input type="text" value="吉伊卡哇股份有限公司" class="auto-filled" readonly>
+              <div class="field-hint">由採購單自動帶入</div>
+            </div>
+            <div class="field col2">
+              <div class="field-label">備註</div>
+              <input type="text" placeholder="（選填）">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 效期填寫 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📅 效期資料</div>
+          <span class="badge badge-warn">三欄填任意兩欄，第三欄自動計算</span>
+        </div>
+        <div class="card-body">
+          <div class="expiry-box">
+            <div class="expiry-title">⚠️ 效期填寫規則（三選二）</div>
+            <div class="expiry-rule">
+              只需填寫以下三個欄位中的<strong>任意兩個</strong>，系統會自動計算第三個，並以<strong style="color:#1f4e79">藍色</strong>顯示自動計算的結果。<br>
+              ① 製造日期 &nbsp;＋&nbsp; ② 有效日期 &nbsp;→&nbsp; 自動算出保存期限<br>
+              ① 製造日期 &nbsp;＋&nbsp; ③ 保存期限 &nbsp;→&nbsp; 自動算出有效日期<br>
+              ② 有效日期 &nbsp;＋&nbsp; ③ 保存期限 &nbsp;→&nbsp; 自動算出製造日期
+            </div>
+            <div class="form-row-3">
+              <div class="field">
+                <div class="field-label">① 製造日期</div>
+                <input type="date" value="2024-06-01" id="mfg">
+                <div class="field-hint">商品製造日</div>
+              </div>
+              <div class="field">
+                <div class="field-label">② 有效日期</div>
+                <input type="date" id="exp" class="auto-filled" value="2025-06-01">
+                <div class="field-hint">🔵 系統自動計算</div>
+              </div>
+              <div class="field">
+                <div class="field-label">③ 保存期限</div>
+                <input type="number" value="365" id="shelf" placeholder="天數">
+                <div class="field-hint">單位：天</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 品項明細 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📦 品項明細</div>
+          <button class="btn btn-outline btn-sm" onclick="addRow020()">＋ 新增列</button>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <table class="tbl" id="tbl020">
+            <thead>
+              <tr>
+                <th style="width:32px">#</th>
+                <th>品號 <span style="color:var(--err)">*</span></th>
+                <th>品名（自動帶入）</th>
+                <th>對照號</th>
+                <th>單箱數量 <span style="color:var(--err)">*</span></th>
+                <th>總進貨數量 <span style="color:var(--err)">*</span></th>
+                <th>總箱數（自動）</th>
+                <th>列印張數 <span style="color:var(--err)">*</span></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody020"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="btn-bar">
+        <button class="btn btn-primary" onclick="showPrintConfirm()">🖨 執行列印</button>
+        <button class="btn btn-outline" onclick="switchModule('label')">👁 預覽標籤樣式</button>
+        <button class="btn btn-ghost">🗑 清除全部</button>
+        <span style="flex:1"></span>
+        <span style="font-size:12px;color:var(--soft)" id="rowCount020">共 2 筆，合計 3 張</span>
+      </div>
+
+      <!-- Print confirm modal -->
+      <div id="printModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:12px;padding:28px;width:400px;box-shadow:0 8px 40px rgba(0,0,0,.2);">
+          <div style="font-size:18px;font-weight:700;color:var(--g1);margin-bottom:12px;">🖨 確認列印</div>
+          <div style="font-size:13.5px;color:var(--mid);line-height:1.8;margin-bottom:20px;">
+            即將列印 <strong style="color:var(--g1);font-size:16px;">3 張</strong> 標籤，共 2 個品項。<br>
+            印表機：<strong>Zebra ZT230 - 倉儲A線</strong><br>
+            <span style="color:var(--soft);font-size:12px;">確認後標籤將直接送至條碼機列印，請確保紙張已備妥。</span>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button class="btn btn-ghost" onclick="hidePrintModal()">取消</button>
+            <button class="btn btn-primary" onclick="doPrint()">✓ 確認列印</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════
+         PAGE: WMSM030
+         ══════════════════════════════ -->
+    <div id="page-m030" class="hidden">
+      <div class="uat-notice">
+        <div class="uat-notice-icon">📋</div>
+        <div class="uat-notice-text"><strong>實務確認說明：</strong>此畫面為 WMSM030 Excel 批次匯入作業。適用於進貨數量多、需大量列印時，透過上傳 Excel 檔案批次處理，比逐筆手動輸入更有效率。</div>
+      </div>
+      <div class="page-title">
+        <h2><span class="module-tag">WMSM030</span> 進貨麥頭標籤 Excel 批次匯入</h2>
+        <p>適用情境：一次進貨多個品項（建議 5 筆以上），預先在 Excel 填好資料後，一次上傳批次列印。</p>
+      </div>
+
+      <div class="step-guide">
+        <div class="sg-step done"><div class="sg-num">步驟 1</div><div class="sg-title">下載 Excel 範本</div><div class="sg-arrow">✓</div></div>
+        <div class="sg-step current"><div class="sg-num">步驟 2</div><div class="sg-title">填好資料後上傳</div><div class="sg-arrow">›</div></div>
+        <div class="sg-step"><div class="sg-num">步驟 3</div><div class="sg-title">確認預覽</div><div class="sg-arrow">›</div></div>
+        <div class="sg-step"><div class="sg-num">步驟 4</div><div class="sg-title">執行轉檔列印</div></div>
+      </div>
+
+      <div class="tip">
+        <div class="tip-icon">📥</div>
+        <div class="tip-text"><strong>第一次使用請先下載範本：</strong>點擊「下載 Excel 範本」，按照範本格式填寫，再回來上傳。範本內有每個欄位的說明，請勿刪除標題列或改變欄位順序。</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📤 上傳 Excel 檔案</div>
+          <button class="btn btn-ghost btn-sm">⬇ 下載 Excel 範本</button>
+        </div>
+        <div class="card-body">
+          <div class="dropzone" onclick="simulateUpload()">
+            <div class="dropzone-icon">📂</div>
+            <div class="dropzone-text">點此選擇檔案，或將 Excel 拖放至此</div>
+            <div class="dropzone-sub">支援格式：.xlsx &nbsp;|&nbsp; 建議不超過 500 筆</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="importPreviewCard">
+        <div class="card-header">
+          <div class="card-title">🔍 匯入預覽</div>
+          <div style="display:flex;gap:8px;">
+            <span class="badge badge-ok">✓ 正常 3 筆</span>
+            <span class="badge badge-warn">⚠ 警告 1 筆</span>
+            <span class="badge" style="background:var(--errbg);color:var(--err);border:1px solid var(--errbd);">✗ 錯誤 1 筆</span>
+          </div>
+        </div>
+        <div class="card-body" style="padding:0;overflow-x:auto;">
+          <table class="import-tbl">
+            <thead>
+              <tr>
+                <th>列#</th><th>狀態</th><th>品號</th><th>品名</th>
+                <th>單箱數</th><th>總進貨</th><th>總箱數</th>
+                <th>製造日期</th><th>有效日期</th><th>保存期限</th><th>列印張數</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="row-ok"><td>1</td><td><span class="badge badge-ok">✓ 正常</span></td><td class="mono">50037631</td><td>吉伊卡哇透明直傘</td><td>24</td><td>480</td><td>20</td><td>2024-06-01</td><td class="auto-calc-cell">2025-06-01</td><td>365</td><td>20</td></tr>
+              <tr class="row-ok"><td>2</td><td><span class="badge badge-ok">✓ 正常</span></td><td class="mono">A100001</td><td>Hello Kitty 保溫杯</td><td>12</td><td>120</td><td>10</td><td>2024-08-15</td><td>2026-08-15</td><td class="auto-calc-cell">731</td><td>10</td></tr>
+              <tr class="row-ok"><td>3</td><td><span class="badge badge-ok">✓ 正常</span></td><td class="mono">B200002</td><td>Sanrio 馬克杯組合</td><td>6</td><td>60</td><td>10</td><td>2024-09-01</td><td>2026-09-01</td><td>730</td><td>10</td></tr>
+              <tr class="row-warn"><td>4</td><td><span class="badge badge-warn">⚠ 警告</span></td><td class="mono">C300003</td><td>布丁狗玩偶</td><td>10</td><td>201</td><td>20</td><td>2024-07-01</td><td>2025-07-01</td><td>365</td><td>20</td></tr>
+              <tr class="row-err"><td>5</td><td><span class="badge" style="background:var(--errbg);color:var(--err);border:1px solid var(--errbd);font-size:11px;">✗ 錯誤</span></td><td class="mono" style="color:var(--err)">D999999</td><td style="color:var(--soft)">（品號不存在）</td><td>8</td><td>80</td><td>10</td><td>2024-10-01</td><td>2025-10-01</td><td>365</td><td>10</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:14px 18px;background:var(--errbg);border-top:1px solid var(--errbd);">
+          <div style="font-size:12.5px;font-weight:700;color:var(--err);margin-bottom:6px;">✗ 錯誤清單（需修正後才可執行列印）</div>
+          <div style="font-size:12px;color:#7f1d1d;">第 5 列：品號「D999999」不存在於商品資料庫，請確認品號是否正確。</div>
+        </div>
+        <div style="padding:14px 18px;background:var(--warnbg);border-top:1px solid var(--warnbd);">
+          <div style="font-size:12.5px;font-weight:700;color:#92400e;margin-bottom:6px;">⚠ 警告清單（可繼續執行，但請確認）</div>
+          <div style="font-size:12px;color:#78350f;">第 4 列：總箱數 20，但依「總進貨數量 ÷ 單箱數量」計算應為 21（201 ÷ 10 = 20.1，進位 = 21）。確認數量是否正確？</div>
+        </div>
+      </div>
+
+      <div class="btn-bar">
+        <button class="btn btn-primary" disabled style="opacity:.4;cursor:not-allowed;">🖨 轉檔結轉列印（有錯誤，請先修正）</button>
+        <button class="btn btn-ghost">🔄 重新上傳</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════
+         PAGE: LABEL PREVIEW
+         ══════════════════════════════ -->
+    <div id="page-label" class="hidden">
+      <div class="uat-notice">
+        <div class="uat-notice-icon">📋</div>
+        <div class="uat-notice-text"><strong>實務確認說明：</strong>以下為實際列印的標籤樣式（8×11 公分）。請確認標籤上各欄位的名稱、位置、格式是否符合實際貼標需求。如需調整欄位順序或字體大小，請在簽核頁面標注。</div>
+      </div>
+      <div class="page-title">
+        <h2>🏷 麥頭標籤樣式確認</h2>
+        <p>標籤尺寸：8 cm（寬）× 11 cm（高）；使用 Zebra 條碼機列印</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">標籤預覽（實際比例）</div>
+          <span class="badge badge-new">等比展示，非縮小版</span>
+        </div>
+        <div class="card-body">
+          <div class="label-preview-wrap">
+            <div>
+              <div style="font-size:11px;color:var(--soft);margin-bottom:8px;text-align:center;">⬇ 實際列印樣式</div>
+              <div class="label-card">
+                <div class="lc-code">50037631</div>
+                <div class="lc-name">吉伊卡哇透明直傘</div>
+                <div class="lc-row"><span>Qty/Box: 24</span><span>Boxes: 20</span></div>
+                <div class="lc-row"><span>MFG: 2024-06-01</span></div>
+                <div class="lc-row"><span>EXP: 2025-06-01</span></div>
+                <div class="lc-row"><span>Shelf: 365 days</span></div>
+                <div class="lc-barcode">|||||||||||</div>
+                <div class="lc-barcode-text">50037631 / 0741310</div>
+                <div class="lc-stamp">11/03 14:32:07</div>
+              </div>
+            </div>
+            <div class="label-annot">
+              <div style="font-size:13px;font-weight:700;color:var(--g1);margin-bottom:14px;">各欄位說明</div>
+              <div class="annot-row"><div class="annot-dot"></div><div class="annot-text"><strong>品號</strong>（最上方大字）：商品的唯一編號，條碼也會對應此號碼</div></div>
+              <div class="annot-row"><div class="annot-dot"></div><div class="annot-text"><strong>品名</strong>：商品中文名稱，由系統自動帶入</div></div>
+              <div class="annot-row"><div class="annot-dot"></div><div class="annot-text"><strong>Qty/Box</strong>（每箱數量）：每一箱裝幾個</div></div>
+              <div class="annot-row"><div class="annot-dot"></div><div class="annot-text"><strong>Boxes</strong>（總箱數）：本次進貨幾箱</div></div>
+              <div class="annot-row"><div class="annot-dot"></div><div class="annot-text"><strong>MFG</strong>（製造日期）、<strong>EXP</strong>（有效日期）、<strong>Shelf</strong>（保存期限）</div></div>
+              <div class="annot-row"><div class="annot-dot"></div><div class="annot-text"><strong>條碼</strong>：Code 128 格式，對應品號，可直接掃描</div></div>
+              <div class="annot-row"><div class="annot-dot"></div><div class="annot-text"><strong>條碼下方文字</strong>：品號 / 對照號（如有對照號才顯示）</div></div>
+              <div class="annot-row"><div class="annot-dot"></div><div class="annot-text"><strong>右下角時間戳記</strong>：列印時間，格式 日/月 時:分:秒，供稽核用</div></div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="tip">
+            <div class="tip-icon">❓</div>
+            <div class="tip-text">如需修改標籤上的欄位顯示方式（例如：中文標籤文字、欄位增減、字體大小），請在「確認簽核」頁面中備注，開發人員會根據您的意見調整。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════
+         PAGE: HISTORY
+         ══════════════════════════════ -->
+    <div id="page-history" class="hidden">
+      <div class="uat-notice">
+        <div class="uat-notice-icon">📋</div>
+        <div class="uat-notice-text"><strong>實務確認說明：</strong>此頁面可查詢所有列印紀錄。如果同一批次被重複列印，系統會在紀錄上標示「⚠ 重複」提醒主管注意。請確認查詢條件與顯示欄位是否符合日常稽核需求。</div>
+      </div>
+      <div class="page-title">
+        <h2>📊 列印歷史紀錄</h2>
+        <p>查詢所有麥頭標籤列印記錄，支援日期、品號、人員多條件篩選。</p>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-num">128</div><div class="stat-label">本月列印次數</div></div>
+        <div class="stat-card"><div class="stat-num">3,840</div><div class="stat-label">本月列印張數</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--warn)">3</div><div class="stat-label">本月重複列印次數</div></div>
+        <div class="stat-card"><div class="stat-num">5</div><div class="stat-label">今日列印次數</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">🔍 篩選條件</div></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="field"><div class="field-label">列印日期（起）</div><input type="date" value="2025-03-01"></div>
+            <div class="field"><div class="field-label">列印日期（迄）</div><input type="date" value="2025-03-11"></div>
+            <div class="field"><div class="field-label">品號</div><input type="text" placeholder="輸入品號關鍵字"></div>
+            <div class="field"><div class="field-label">操作人員</div><select><option>全部人員</option><option>倉儲人員甲</option><option>倉儲人員乙</option></select></div>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-primary btn-sm">🔍 查詢</button>
+            <button class="btn btn-ghost btn-sm">清除條件</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">列印紀錄清單</div><span class="badge badge-ok">共 128 筆</span></div>
+        <div class="card-body" style="padding:0;">
+          <table class="hist-tbl">
+            <thead>
+              <tr><th>列印時間</th><th>品號</th><th>品名</th><th>批次號</th><th>張數</th><th>操作人員</th><th>模組</th><th>狀態</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>2025-03-11 14:32</td><td class="mono">50037631</td><td>吉伊卡哇透明直傘</td><td class="mono">PO-20250311-001</td><td>20</td><td>倉儲人員甲</td><td><span class="badge badge-new">WMSM020</span></td><td><span class="badge badge-ok">✓ 成功</span></td></tr>
+              <tr><td>2025-03-11 14:33</td><td class="mono">A100001</td><td>Hello Kitty 保溫杯</td><td class="mono">PO-20250311-001</td><td>10</td><td>倉儲人員甲</td><td><span class="badge badge-new">WMSM020</span></td><td><span class="badge badge-ok">✓ 成功</span></td></tr>
+              <tr class="dup"><td>2025-03-11 15:10</td><td class="mono">50037631</td><td>吉伊卡哇透明直傘</td><td class="mono">PO-20250311-001</td><td>20</td><td>倉儲人員乙</td><td><span class="badge badge-new">WMSM020</span></td><td><span class="badge badge-warn">⚠ 重複列印</span></td></tr>
+              <tr><td>2025-03-10 09:15</td><td class="mono">B200002</td><td>Sanrio 馬克杯組合</td><td class="mono">IMP-20250310-002</td><td>10</td><td>倉儲人員甲</td><td><span class="badge" style="background:var(--sky);color:var(--blue);border:1px solid #b8d4e8;font-size:11px;">WMSM030</span></td><td><span class="badge badge-ok">✓ 成功</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════
+         PAGE: CONFIRM
+         ══════════════════════════════ -->
+    <div id="page-confirm" class="hidden">
+      <div class="page-title">
+        <h2>✅ 實務單位確認簽核</h2>
+        <p>請逐項確認各功能畫面，勾選後填寫意見，由主管簽核。</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">📋 確認項目</div><span id="checkCount" class="badge badge-pending">0 / 10 已確認</span></div>
+        <div class="card-body">
+          <div style="font-size:12.5px;color:var(--mid);margin-bottom:14px;">請點擊各項目打勾確認，若有問題請在下方備注欄說明。</div>
+          <div class="confirm-list" id="confirmList">
+
+            <div style="font-size:12px;font-weight:700;color:var(--g1);margin:4px 0 6px;letter-spacing:.05em;text-transform:uppercase;">WMSM020 套印作業</div>
+            <div class="confirm-item" onclick="toggleCheck(this)">
+              <div class="confirm-cb"></div>
+              <div class="confirm-content">
+                <div class="confirm-title">採購單查詢（FIND）功能欄位符合需求</div>
+                <div class="confirm-desc">採購單號格式、供應商自動帶入、進貨日期等基本資訊是否正確</div>
+              </div>
+            </div>
+            <div class="confirm-item" onclick="toggleCheck(this)">
+              <div class="confirm-cb"></div>
+              <div class="confirm-content">
+                <div class="confirm-title">品號自動帶入品名功能符合需求</div>
+                <div class="confirm-desc">輸入品號後，品名是否能正確自動帶入</div>
+              </div>
+            </div>
+            <div class="confirm-item" onclick="toggleCheck(this)">
+              <div class="confirm-cb"></div>
+              <div class="confirm-content">
+                <div class="confirm-title">效期三則二計算規則符合實際作業</div>
+                <div class="confirm-desc">製造日期/有效日期/保存期限三填二的自動計算邏輯是否與日常作業一致</div>
+              </div>
+            </div>
+            <div class="confirm-item" onclick="toggleCheck(this)">
+              <div class="confirm-cb"></div>
+              <div class="confirm-content">
+                <div class="confirm-title">品項明細表欄位完整（單箱數、總進貨、總箱數、列印張數）</div>
+                <div class="confirm-desc">表格欄位是否涵蓋進貨作業所需的所有資訊</div>
+              </div>
+            </div>
+            <div class="confirm-item" onclick="toggleCheck(this)">
+              <div class="confirm-cb"></div>
+              <div class="confirm-content">
+                <div class="confirm-title">列印前確認視窗內容清楚（含張數、條碼機名稱）</div>
+                <div class="confirm-desc">執行列印前的確認框是否提供足夠資訊讓人員核對</div>
+              </div>
+            </div>
+
+            <div style="font-size:12px;font-weight:700;color:var(--g1);margin:16px 0 6px;letter-spacing:.05em;text-transform:uppercase;">WMSM030 Excel 匯入</div>
+            <div class="confirm-item" onclick="toggleCheck(this)">
+              <div class="confirm-cb"></div>
+              <div class="confirm-content">
+                <div class="confirm-title">Excel 範本欄位符合實際填寫習慣</div>
+                <div class="confirm-desc">欄位順序（品號、品名、單箱數量...）是否與倉儲人員習慣的填寫順序一致</div>
+              </div>
+            </div>
+            <div class="confirm-item" onclick="toggleCheck(this)">
+              <div class="confirm-cb"></div>
+              <div class="confirm-content">
+                <div class="confirm-title">匯入驗證的錯誤提示訊息清楚易懂</div>
+                <div class="confirm-desc">錯誤說明（如「品號不存在」、「數量格式錯誤」）是否讓非技術人員也能看懂</div>
+              </div>
+            </div>
+            <div class="confirm-item" onclick="toggleCheck(this)">
+              <div class="confirm-cb"></div>
+              <div class="confirm-content">
+                <div class="confirm-title">有錯誤時停止列印的機制符合實際需求</div>
+                <div class="confirm-desc">只有警告時可繼續列印、有錯誤時必須修正的機制是否符合作業規範</div>
+              </div>
+            </div>
+
+            <div style="font-size:12px;font-weight:700;color:var(--g1);margin:16px 0 6px;letter-spacing:.05em;text-transform:uppercase;">標籤與紀錄</div>
+            <div class="confirm-item" onclick="toggleCheck(this)">
+              <div class="confirm-cb"></div>
+              <div class="confirm-content">
+                <div class="confirm-title">標籤欄位內容符合實際貼標需求</div>
+                <div class="confirm-desc">標籤上的品號、品名、效期、條碼、數量等資訊是否完整且位置合適</div>
+              </div>
+            </div>
+            <div class="confirm-item" onclick="toggleCheck(this)">
+              <div class="confirm-cb"></div>
+              <div class="confirm-content">
+                <div class="confirm-title">列印歷史紀錄的查詢欄位及重複列印標示符合稽核需求</div>
+                <div class="confirm-desc">紀錄中的時間、人員、品號、張數及重複列印標示是否滿足管理追蹤需求</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">📝 修改意見與備注</div></div>
+        <div class="card-body">
+          <textarea style="width:100%;height:120px;border:1.5px solid var(--faint);border-radius:8px;padding:12px;font-family:inherit;font-size:13px;color:var(--ink);resize:vertical;outline:none;background:#fff;" placeholder="請填寫需要調整的項目，例如：&#10;• 欄位名稱調整（如：「保存期限」改為「保固天數」）&#10;• 標籤上希望增加欄位 XXX&#10;• 其他作業流程問題..."></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">🖊 主管簽核</div></div>
+        <div class="card-body">
+          <div class="form-row-3">
+            <div class="field"><div class="field-label">確認人員 <span class="req">*</span></div><input type="text" placeholder="姓名"></div>
+            <div class="field"><div class="field-label">部門 / 職稱</div><input type="text" placeholder="例：倉儲部 / 組長"></div>
+            <div class="field"><div class="field-label">確認日期 <span class="req">*</span></div><input type="date" value="2025-03-11"></div>
+          </div>
+          <div class="form-row-2">
+            <div class="field">
+              <div class="field-label">確認結果 <span class="req">*</span></div>
+              <select>
+                <option>── 請選擇 ──</option>
+                <option>✅ 確認通過，可進行下一步開發</option>
+                <option>⚠ 有條件通過，依備注修改後不需再確認</option>
+                <option>❌ 需修改後重新確認</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- CONFIRM FOOTER -->
+<div class="confirm-footer">
+  <div class="cf-left">實務確認版 v1.0 &nbsp;|&nbsp; <strong>WMSM 麥頭印標系統</strong> &nbsp;|&nbsp; 僅供確認用途，非正式上線版本</div>
+  <div class="cf-actions">
+    <button class="btn btn-ghost btn-sm" onclick="prevModule()">‹ 上一頁</button>
+    <button class="btn btn-primary btn-sm" onclick="nextModule()">下一頁 ›</button>
+  </div>
+</div>
+
+<script>
+const modules = ['m020','m030','label','history','confirm'];
+let current = 0;
+
+function switchModule(id) {
+  modules.forEach(m => {
+    document.getElementById('page-'+m).classList.add('hidden');
+    document.getElementById('tab-'+m).classList.remove('active');
+    document.getElementById('sb-'+m).classList.remove('active');
+  });
+  document.getElementById('page-'+id).classList.remove('hidden');
+  document.getElementById('tab-'+id).classList.add('active');
+  document.getElementById('sb-'+id).classList.add('active');
+  current = modules.indexOf(id);
+}
+
+function nextModule() {
+  if (current < modules.length - 1) switchModule(modules[current + 1]);
+}
+function prevModule() {
+  if (current > 0) switchModule(modules[current - 1]);
+}
+
+// ── WMSM020 rows ──
+const demoData = [
+  {code:'50037631', name:'吉伊卡哇透明直傘', ref:'0741310', box:24, total:480, boxes:20, qty:20},
+  {code:'A100001',  name:'Hello Kitty 保溫杯', ref:'',      box:12, total:120, boxes:10, qty:10},
+];
+
+function addRow020(data = {}) {
+  const tb = document.getElementById('tbody020');
+  const idx = tb.rows.length + 1;
+  const d = {code:'',name:'',ref:'',box:'',total:'',boxes:'',qty:1,...data};
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="row-no">${idx}</td>
+    <td><input type="text" value="${d.code}" style="width:100px" placeholder="品號" oninput="autoFillName(this)"></td>
+    <td><input type="text" value="${d.name}" readonly class="${d.name?'auto-filled':''}" style="width:130px" placeholder="自動帶入"></td>
+    <td><input type="text" value="${d.ref}" style="width:80px" placeholder="（選填）"></td>
+    <td><input type="number" value="${d.box}" style="width:70px" min="1" oninput="calcBoxes(this)"></td>
+    <td><input type="number" value="${d.total}" style="width:80px" min="1" oninput="calcBoxes(this)"></td>
+    <td><input type="number" value="${d.boxes}" style="width:70px" class="${d.boxes?'auto-filled':''}" readonly></td>
+    <td><input type="number" value="${d.qty}" style="width:60px" min="1"></td>
+    <td><button class="del-row-btn" onclick="this.closest('tr').remove();updateCount()">✕</button></td>`;
+  tb.appendChild(tr);
+  updateCount();
+}
+
+function autoFillName(input) {
+  const db = {'50037631':['吉伊卡哇透明直傘','0741310'],'A100001':['Hello Kitty 保溫杯',''],'B200002':['Sanrio 馬克杯組合',''],'C300003':['布丁狗玩偶','']};
+  const row = input.closest('tr');
+  const nameInput = row.cells[2].querySelector('input');
+  const refInput  = row.cells[3].querySelector('input');
+  const found = db[input.value.trim()];
+  if (found) {
+    nameInput.value = found[0]; nameInput.classList.add('auto-filled');
+    if (found[1]) { refInput.value = found[1]; }
+  } else {
+    nameInput.value = ''; nameInput.classList.remove('auto-filled');
+  }
+}
+
+function calcBoxes(input) {
+  const row = input.closest('tr');
+  const boxInput   = row.cells[4].querySelector('input');
+  const totalInput = row.cells[5].querySelector('input');
+  const boxesInput = row.cells[6].querySelector('input');
+  const b = parseInt(boxInput.value), t = parseInt(totalInput.value);
+  if (b > 0 && t > 0) { boxesInput.value = Math.ceil(t/b); boxesInput.classList.add('auto-filled'); }
+}
+
+function updateCount() {
+  const rows = document.getElementById('tbody020').rows.length;
+  let total = 0;
+  document.querySelectorAll('#tbody020 tr').forEach(tr=>{
+    const v = parseInt(tr.cells[7]?.querySelector('input')?.value)||0;
+    total += v;
+  });
+  document.getElementById('rowCount020').textContent = `共 ${rows} 筆，合計 ${total} 張`;
+}
+
+function doFind() {
+  const tb = document.getElementById('tbody020');
+  tb.innerHTML = '';
+  demoData.forEach(d => addRow020(d));
+  showToast('✓ 採購單 PO-20250311-001 帶入 2 筆商品');
+}
+
+function showPrintConfirm() {
+  document.getElementById('printModal').style.display = 'flex';
+}
+function hidePrintModal() {
+  document.getElementById('printModal').style.display = 'none';
+}
+function doPrint() {
+  hidePrintModal();
+  showToast('🖨 列印指令已送出，共 3 張，請至條碼機取件');
+  switchModule('history');
+}
+
+function simulateUpload() {
+  showToast('📂 已模擬上傳 Excel，顯示預覽結果');
+}
+
+// ── confirm checklist ──
+function toggleCheck(el) {
+  el.classList.toggle('checked');
+  const cb = el.querySelector('.confirm-cb');
+  cb.textContent = el.classList.contains('checked') ? '✓' : '';
+  const total = document.querySelectorAll('.confirm-item').length;
+  const done  = document.querySelectorAll('.confirm-item.checked').length;
+  const badge = document.getElementById('checkCount');
+  badge.textContent = `${done} / ${total} 已確認`;
+  badge.className = done === total ? 'badge badge-ok' : done > 0 ? 'badge badge-warn' : 'badge badge-pending';
+}
+
+// ── Toast ──
+let toastTimer;
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id='toast'; t.style.cssText='position:fixed;bottom:80px;right:24px;background:#1a5c35;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;z-index:9999;max-width:360px;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:opacity .3s;font-family:Noto Sans TC,sans-serif;'; document.body.appendChild(t); }
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.style.opacity='0', 3000);
+}
+
+// init
+doFind();
+</script>
+</body>
+</html>
