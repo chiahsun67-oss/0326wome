@@ -1,5 +1,13 @@
 export type ModuleId = 'm020' | 'm030' | 'label' | 'history' | 'confirm';
 
+export interface UserInfo {
+  id: number;
+  username: string;
+  display_name: string;
+  department: string;
+  role: 'admin' | 'operator' | 'inspector';
+}
+
 export interface Product {
   id: number;
   code: string;
@@ -44,6 +52,7 @@ export interface ImportBatchItem {
   row_no: number;
   product_code: string;
   product_name: string;
+  ref_code: string;
   qty_per_box: number | null;
   total_qty: number | null;
   total_boxes: number | null;

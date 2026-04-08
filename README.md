@@ -13,6 +13,7 @@
 | 後端 | Node.js + Express + TypeScript |
 | 資料庫 | PostgreSQL |
 | 標籤機 | Zebra ZT230（條碼列印） |
+| 密碼雜湊 | bcrypt（cost=10） |
 
 ---
 
@@ -46,15 +47,29 @@ npm run dev                  # 啟動於 http://localhost:5173
 
 ---
 
+## 測試帳號
+
+| 帳號 | 密碼 | 角色 |
+|------|------|------|
+| admin | wmsm2026 | 系統管理員 |
+| warehouse01 | wmsm2026 | 倉儲人員甲 |
+| warehouse02 | wmsm2026 | 倉儲人員乙 |
+| qa01 | wmsm2026 | 品管人員 |
+
+> 忘記密碼可於登入頁點擊「忘記密碼？」重設（系統自動更新 DB 並顯示新密碼供複製）
+
+---
+
 ## 功能模組
 
 | 模組 | 路徑 | 說明 |
 |------|------|------|
-| WMSM020 | `/` Tab 1 | 手動套印（PO 查詢、效期三選二、品項明細） |
-| WMSM030 | `/` Tab 2 | Excel 批次匯入（.xlsx 驗證預覽） |
-| 標籤預覽 | `/` Tab 3 | 8×11cm 標籤樣式確認 |
-| 列印紀錄 | `/` Tab 4 | 歷史查詢、重複列印偵測 |
-| 確認簽核 | `/` Tab 5 | UAT 勾選清單 + 主管簽核 |
+| 登入 | 首頁 | bcrypt 驗證、忘記密碼重設 |
+| WMSM020 | Tab 1 | 手動套印（PO 查詢、效期三選二、品項明細、列印視窗） |
+| WMSM030 | Tab 2 | Excel 批次匯入（.xlsx 驗證預覽、執行後開啟列印視窗） |
+| 標籤預覽 | Tab 3 | 8×11cm 標籤樣式確認 |
+| 列印紀錄 | Tab 4 | 歷史查詢、重複列印偵測 |
+| 確認簽核 | Tab 5 | UAT 勾選清單 + 主管簽核 |
 
 ---
 
@@ -62,6 +77,8 @@ npm run dev                  # 啟動於 http://localhost:5173
 
 | Method | 路徑 | 說明 |
 |--------|------|------|
+| POST | `/api/auth/login` | 登入（bcrypt 驗證） |
+| POST | `/api/auth/reset-password` | 忘記密碼（更新 hash，回傳新 hash） |
 | GET | `/api/products/:code` | 查詢商品（含品名、對照號） |
 | GET | `/api/products/search?q=` | 模糊搜尋商品 |
 | GET | `/api/purchase-orders/:poNo` | 查詢採購單含明細 |
@@ -69,6 +86,7 @@ npm run dev                  # 啟動於 http://localhost:5173
 | GET | `/api/print-history` | 列印歷史（支援篩選、分頁） |
 | GET | `/api/print-stats` | 本月 / 今日列印統計 |
 | GET | `/api/operators` | 操作人員清單 |
+| GET | `/api/import/template` | 下載 Excel 範本（10 欄） |
 | POST | `/api/import/preview` | 上傳 .xlsx 驗證預覽 |
 | POST | `/api/import/execute` | 執行批次列印（WMSM030） |
 | POST | `/api/uat/confirm` | 儲存 UAT 簽核 |

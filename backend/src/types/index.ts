@@ -112,6 +112,7 @@ export interface ImportBatchItem {
   row_no: number;
   product_code: string;
   product_name: string;
+  ref_code: string;
   qty_per_box: number | null;
   total_qty: number | null;
   total_boxes: number | null;

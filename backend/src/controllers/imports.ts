@@ -5,6 +5,7 @@ import { ApiResponse, ImportBatchItem, ImportPreviewResult, ImportRowMessage, Ro
 
 interface ExcelRow {
   品號?: string;
+  對照號?: string;
   品名?: string;
   單箱數量?: number;
   總進貨數量?: number;
@@ -38,7 +39,7 @@ export async function previewImport(req: Request, res: Response): Promise<void> 
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawRows = XLSX.utils.sheet_to_json<ExcelRow>(sheet);
 
-    const batchNo = `IMP-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(Date.now()).slice(-3)}`;
+    let batchNo = '';
 
     // 取得已知品號
     const productResult = await pool.query(
@@ -52,13 +53,14 @@ export async function previewImport(req: Request, res: Response): Promise<void> 
       const messages: ImportRowMessage[] = [];
       let rowStatus: RowStatus = 'ok';
 
-      const code = String(row['品號'] ?? '').trim();
-      const qtyPerBox = Number(row['單箱數量'] ?? 0);
+      const code      = String(row['品號']    ?? '').trim();
+      const refCode   = String(row['對照號']  ?? '').trim();
+      const qtyPerBox = Number(row['單箱數量']  ?? 0);
       const totalQty  = Number(row['總進貨數量'] ?? 0);
-      const totalBoxes = row['總箱數'] ? Number(row['總箱數']) : null;
-      const printCopies = Number(row['列印張數'] ?? 1);
-      const mfgDate = parseExcelDate(row['製造日期']);
-      const expDate = parseExcelDate(row['有效日期']);
+      const totalBoxes   = row['總箱數']   ? Number(row['總箱數'])   : null;
+      const printCopies  = Number(row['列印張數'] ?? 1);
+      const mfgDate   = parseExcelDate(row['製造日期']);
+      const expDate   = parseExcelDate(row['有效日期']);
       const shelfDays = row['保存期限'] ? Number(row['保存期限']) : null;
 
       // 必填驗證
@@ -98,6 +100,7 @@ export async function previewImport(req: Request, res: Response): Promise<void> 
         row_no: i + 1,
         product_code: code,
         product_name: productName,
+        ref_code: refCode,
         qty_per_box: qtyPerBox || null,
         total_qty: totalQty || null,
         total_boxes: calculatedBoxes,
@@ -120,19 +123,21 @@ export async function previewImport(req: Request, res: Response): Promise<void> 
       client = await pool.connect();
       await client.query('BEGIN');
       const batchResult = await client.query(
-        `INSERT INTO import_batches (batch_no,file_name,operator,total_rows,ok_rows,warn_rows,err_rows,status)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,'preview') RETURNING id`,
-        [batchNo, req.file.originalname, '倉儲人員', items.length, ok, warn, err]
+        `INSERT INTO import_batches (file_name,operator,total_rows,ok_rows,warn_rows,err_rows,status)
+         VALUES ($1,$2,$3,$4,$5,$6,'preview') RETURNING id, batch_no`,
+        [req.file.originalname, '倉儲人員', items.length, ok, warn, err]
       );
-      const batchId = batchResult.rows[0].id;
+      const { id: batchId, batch_no: dbBatchNo } = batchResult.rows[0];
+      batchNo = dbBatchNo;
 
       for (const item of items) {
         await client.query(
           `INSERT INTO import_batch_items
-             (batch_id,row_no,product_code,product_name,qty_per_box,total_qty,total_boxes,
+             (batch_id,row_no,product_code,product_name,ref_code,
+              qty_per_box,total_qty,total_boxes,
               mfg_date,exp_date,shelf_days,print_copies,row_status,messages)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-          [batchId, item.row_no, item.product_code, item.product_name,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+          [batchId, item.row_no, item.product_code, item.product_name, item.ref_code ?? '',
            item.qty_per_box, item.total_qty, item.total_boxes,
            item.mfg_date, item.exp_date, item.shelf_days, item.print_copies,
            item.row_status, JSON.stringify(item.messages)]
@@ -168,6 +173,11 @@ export async function executeImport(req: Request, res: Response): Promise<void> 
     printer_name?: string;
   };
 
+  if (!batch_no?.trim() || !operator?.trim()) {
+    res.status(400).json({ success: false, error: 'batch_no 與 operator 為必填' } satisfies ApiResponse);
+    return;
+  }
+
   let client;
   try {
     client = await pool.connect();
@@ -177,18 +187,20 @@ export async function executeImport(req: Request, res: Response): Promise<void> 
       `SELECT id, err_rows FROM import_batches WHERE batch_no=$1 AND status='preview'`,
       [batch_no]
     );
-    if (batchResult.rowCount === 0) {
+    if (!batchResult.rowCount) {
+      await client.query('ROLLBACK');
       res.status(404).json({ success: false, error: '找不到匯入批次，或已執行過' } satisfies ApiResponse);
       return;
     }
     const { id: batchId, err_rows } = batchResult.rows[0];
     if (err_rows > 0) {
+      await client.query('ROLLBACK');
       res.status(400).json({ success: false, error: '尚有錯誤列，請修正後再執行' } satisfies ApiResponse);
       return;
     }
 
     const itemsResult = await client.query(
-      `SELECT product_code, product_name, qty_per_box, total_qty, total_boxes,
+      `SELECT product_code, product_name, ref_code, qty_per_box, total_qty, total_boxes,
               mfg_date, exp_date, shelf_days, print_copies
        FROM import_batch_items WHERE batch_id=$1 AND row_status <> 'error'`,
       [batchId]
@@ -210,10 +222,10 @@ export async function executeImport(req: Request, res: Response): Promise<void> 
       const item = items[i];
       await client.query(
         `INSERT INTO print_job_items
-           (job_id,line_no,product_code,product_name,qty_per_box,total_qty,
+           (job_id,line_no,product_code,product_name,ref_code,qty_per_box,total_qty,
             total_boxes,print_copies,mfg_date,exp_date,shelf_days)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-        [jobId, i+1, item.product_code, item.product_name,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        [jobId, i+1, item.product_code, item.product_name, item.ref_code ?? '',
          item.qty_per_box, item.total_qty, item.total_boxes, item.print_copies,
          item.mfg_date, item.exp_date, item.shelf_days]
       );
@@ -236,4 +248,50 @@ export async function executeImport(req: Request, res: Response): Promise<void> 
   } finally {
     client?.release();
   }
+}
+
+/** 下載 Excel 範本（欄位順序與 123.xlsx 一致） */
+export function downloadTemplate(_req: Request, res: Response): void {
+  const headers = ['品號','對照號','品名','單箱數量','總進貨數量','總箱數','製造日期','有效日期','保存期限','列印張數'];
+
+  const sampleRows = [
+    ['50037631','0741310','吉伊卡哇透明直傘', 24, 480, 20, '2024-06-01','2025-06-01', 365, 20],
+    ['A100001',  '',       'Hello Kitty 保溫杯',12, 120, 10, '2024-08-15','2026-08-15', 731, 10],
+  ];
+
+  const wb = XLSX.utils.book_new();
+
+  // 工作表1：範本（含說明列）
+  const ws1 = XLSX.utils.aoa_to_sheet([
+    headers,
+    ...sampleRows,
+  ]);
+  // 欄寬
+  ws1['!cols'] = [12,10,20,10,12,8,12,12,10,10].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws1, '工作表1');
+
+  // 工作表2：欄位說明
+  const ws2 = XLSX.utils.aoa_to_sheet([
+    ['欄位名稱','必填','格式說明'],
+    ['品號',     '✓', '商品唯一編號，系統會自動帶入品名'],
+    ['對照號',   '',  '選填，對應條碼下方文字'],
+    ['品名',     '',  '可空白，系統依品號自動帶入'],
+    ['單箱數量', '✓', '正整數'],
+    ['總進貨數量','✓','正整數'],
+    ['總箱數',   '',  '可空白，系統自動計算（進位）'],
+    ['製造日期', '',  'YYYY-MM-DD 或 Excel 日期格式'],
+    ['有效日期', '',  'YYYY-MM-DD 或 Excel 日期格式'],
+    ['保存期限', '',  '天數（整數）'],
+    ['列印張數', '✓', '預設 1，正整數'],
+  ]);
+  ws2['!cols'] = [14, 6, 36].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws2, '工作表2');
+
+  // 工作表3（空白備用）
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([]), '工作表3');
+
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="WMSM030_template.xlsx"');
+  res.send(buf);
 }

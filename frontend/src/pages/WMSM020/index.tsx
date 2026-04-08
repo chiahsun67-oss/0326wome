@@ -1,8 +1,81 @@
 import { useState, useCallback } from 'react';
 import { api } from '../../api/client';
 import { POItem } from '../../types';
+import { printLabels, LabelData } from '../../utils/printLabels';
 
-interface Props { onToast: (msg: string) => void; onSwitchHistory: () => void }
+interface Props { onToast: (msg: string) => void; onSwitchHistory: () => void; operator?: string; }
+
+function WmsmLabel({ d }: { d: LabelData }) {
+  return (
+    <div className="wmsm-label">
+      {/* 品號 / 品名 */}
+      <div className="wl-row2">
+        <div className="wl-cell">
+          <span className="wl-key">品號品號：</span>
+          <span className="wl-val">{d.product_code || '—'}</span>
+        </div>
+        <div className="wl-cell">
+          <span className="wl-key">品名名稱：</span>
+          <span className="wl-val">{d.product_name || '—'}</span>
+        </div>
+      </div>
+
+      {/* 本箱數量 / 總箱數 */}
+      <div className="wl-row2">
+        <div className="wl-cell">
+          <span className="wl-key">箱內總箱入數：</span>
+          <span className="wl-val">
+            {d.box_qty || '—'}
+            {d.is_tail && <span style={{ fontSize: '10px', color: '#b45309', marginLeft: 4 }}>（尾數箱）</span>}
+          </span>
+        </div>
+        <div className="wl-cell">
+          <span className="wl-key">箱數總數位數（根據實際數值）：</span>
+          <span className="wl-val">{d.total_boxes || '—'}</span>
+        </div>
+      </div>
+
+      {/* 箱型說明 */}
+      <div className="wl-box-breakdown">
+        {d.is_tail ? (
+          <div className="wl-breakdown-row wl-tail">
+            <span className="wl-key">⚠ 尾數箱：</span>
+            <span className="wl-val-sm">本箱 {d.box_qty} 個（未滿箱，每箱標準 {d.qty_per_box} 個）</span>
+          </div>
+        ) : (
+          <div className="wl-breakdown-row">
+            <span className="wl-key">整　　箱：</span>
+            <span className="wl-val-sm">本箱 {d.box_qty} 個（整箱）</span>
+          </div>
+        )}
+      </div>
+
+      {/* 箱號（自動填入） */}
+      <div className="wl-remark">
+        備註：第 <strong style={{ fontSize: '15px' }}>{d.box_no}</strong> 箱／共{' '}
+        <strong style={{ fontSize: '15px' }}>{d.total_boxes}</strong> 箱
+      </div>
+      <div className="wl-remark-blank" />
+
+      {/* 效期 */}
+      <div className="wl-row3">
+        <div className="wl-cell">
+          <span className="wl-key">製造日期：</span>
+          <span className="wl-val">{d.mfg_date || '—'}</span>
+        </div>
+        <div className="wl-cell">
+          <span className="wl-key">保存期限：</span>
+          <span className="wl-val">{d.shelf_days !== '' ? `${d.shelf_days} 天` : '—'}</span>
+        </div>
+        <div className="wl-cell">
+          <span className="wl-key">有效日期：</span>
+          <span className="wl-val">{d.exp_date || '—'}</span>
+        </div>
+      </div>
+      <div className="wl-sub">（三擇一填寫）</div>
+    </div>
+  );
+}
 
 const EMPTY_ITEM = (): POItem => ({
   product_code: '', product_name: '', ref_code: '',
@@ -10,17 +83,50 @@ const EMPTY_ITEM = (): POItem => ({
   print_copies: 1, mfg_date: '', exp_date: '', shelf_days: '',
 });
 
-export default function WMSM020({ onToast, onSwitchHistory }: Props) {
+export default function WMSM020({ onToast, onSwitchHistory, operator = '倉儲人員' }: Props) {
   const [poNo, setPoNo]         = useState('PO-20250311-001');
   const [poDate, setPoDate]     = useState('2025-03-11');
   const [supplier, setSupplier] = useState('');
   const [remark, setRemark]     = useState('');
   const [mfgDate, setMfgDate]   = useState('2024-06-01');
   const [expDate, setExpDate]   = useState('');
-  const [shelfDays, setShelfDays] = useState<number | ''>('365');
+  const [shelfDays, setShelfDays] = useState<number | ''>(365);
   const [items, setItems]       = useState<POItem[]>([EMPTY_ITEM(), EMPTY_ITEM()]);
   const [showModal, setShowModal] = useState(false);
+  const [showLabelPreview, setShowLabelPreview] = useState(false);
   const [loading, setLoading]   = useState(false);
+
+  /** 每箱展開一筆 LabelData，尾數箱自動標示 */
+  const labelDataList = (): LabelData[] => {
+    const result: LabelData[] = [];
+    for (const i of items.filter((x) => x.product_code)) {
+      const qpb = Number(i.qty_per_box) || 0;
+      const tq  = Number(i.total_qty)   || 0;
+      const totalBoxes = qpb > 0 && tq > 0 ? Math.ceil(tq / qpb) : (Number(i.total_boxes) || 0);
+      const remainder  = qpb > 0 && tq > 0 ? tq % qpb : 0;
+      for (let n = 1; n <= totalBoxes; n++) {
+        const isTail = remainder > 0 && n === totalBoxes;
+        result.push({
+          product_code: i.product_code,
+          product_name: i.product_name,
+          qty_per_box:  qpb,
+          box_qty:      isTail ? remainder : qpb,
+          box_no:       n,
+          total_boxes:  totalBoxes,
+          is_tail:      isTail,
+          mfg_date:     mfgDate,
+          exp_date:     expDate,
+          shelf_days:   shelfDays,
+        });
+      }
+    }
+    return result;
+  };
+
+  const handlePrint = () => {
+    const err = printLabels(labelDataList());
+    if (err) onToast(err);
+  };
 
   // 效期三選二計算
   const handleExpiryChange = useCallback((field: 'mfg' | 'exp' | 'shelf', value: string) => {
@@ -61,13 +167,13 @@ export default function WMSM020({ onToast, onSwitchHistory }: Props) {
         setRemark(res.data.remark);
         setItems(res.data.items.map((i) => ({
           ...i,
-          qty_per_box: i.qty_per_box,
-          total_qty: i.total_qty,
-          total_boxes: i.total_boxes,
-          print_copies: i.print_copies,
-          mfg_date: i.mfg_date ?? '',
-          exp_date: i.exp_date ?? '',
-          shelf_days: i.shelf_days ?? '',
+          qty_per_box:  i.qty_per_box,
+          total_qty:    i.total_qty,
+          total_boxes:  i.total_boxes,
+          print_copies: i.total_boxes,   // ← 帶入採購單時，列印張數 = 總箱數
+          mfg_date:     i.mfg_date ?? '',
+          exp_date:     i.exp_date ?? '',
+          shelf_days:   i.shelf_days ?? '',
         })));
         onToast(`✓ 採購單 ${poNo} 帶入 ${res.data.items.length} 筆商品`);
       } else {
@@ -93,10 +199,14 @@ export default function WMSM020({ onToast, onSwitchHistory }: Props) {
   const updateItem = (idx: number, field: keyof POItem, value: string | number) => {
     const newItems = [...items];
     const item = { ...newItems[idx], [field]: value };
-    // 自動計算 total_boxes
-    const box = Number(field === 'qty_per_box' ? value : item.qty_per_box);
-    const total = Number(field === 'total_qty' ? value : item.total_qty);
-    if (box > 0 && total > 0) item.total_boxes = Math.ceil(total / box);
+    // 自動計算 total_boxes，並同步帶入列印張數
+    const box   = Number(field === 'qty_per_box' ? value : item.qty_per_box);
+    const total = Number(field === 'total_qty'   ? value : item.total_qty);
+    if (box > 0 && total > 0) {
+      const boxes = Math.ceil(total / box);
+      item.total_boxes  = boxes;
+      item.print_copies = boxes;   // ← 列印張數自動 = 總箱數
+    }
     newItems[idx] = item;
     setItems(newItems);
   };
@@ -109,7 +219,7 @@ export default function WMSM020({ onToast, onSwitchHistory }: Props) {
       const res = await api.createPrintJob({
         source_module: 'WMSM020',
         po_no: poNo.trim() || undefined,
-        operator: '倉儲人員',
+        operator,
         items: items.filter((i) => i.product_code).map((i) => ({
           product_code: i.product_code,
           product_name: i.product_name,
@@ -126,7 +236,7 @@ export default function WMSM020({ onToast, onSwitchHistory }: Props) {
       setShowModal(false);
       if (res.success) {
         onToast(res.message ?? `🖨 列印指令已送出，共 ${res.data?.total_copies} 張`);
-        onSwitchHistory();
+        setShowLabelPreview(true);
       } else {
         onToast(`✗ ${res.error}`);
       }
@@ -289,13 +399,35 @@ export default function WMSM020({ onToast, onSwitchHistory }: Props) {
 
       <div className="btn-bar">
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>🖨 執行列印</button>
-        <button className="btn btn-outline">👁 預覽標籤樣式</button>
+        <button className="btn btn-outline" onClick={() => setShowLabelPreview(true)}>👁 預覽標籤樣式</button>
         <button className="btn btn-ghost" onClick={() => setItems([EMPTY_ITEM()])}>🗑 清除全部</button>
         <span style={{ flex: 1 }} />
         <span style={{ fontSize: '12px', color: 'var(--soft)' }}>
           共 {items.filter((i) => i.product_code).length} 筆，合計 {totalCopies} 張
         </span>
       </div>
+
+      {/* 標籤預覽 Modal */}
+      {showLabelPreview && (
+        <div className="modal-overlay" onClick={() => setShowLabelPreview(false)}>
+          <div className="modal-wide no-print" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+              <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--g1)' }}>🏷 麥頭標籤預覽</div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn btn-outline btn-sm" onClick={handlePrint}>🖨 列印此頁</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => { setShowLabelPreview(false); onSwitchHistory(); }}>✓ 完成，前往歷史</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setShowLabelPreview(false)}>✕ 關閉</button>
+              </div>
+            </div>
+            <div className="print-area" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+              {labelDataList().length === 0
+                ? <div style={{ color: 'var(--soft)', fontSize: '13px' }}>尚無品項資料，請先填寫品項明細</div>
+                : labelDataList().map((d, i) => <WmsmLabel key={i} d={d} />)
+              }
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 列印確認 Modal */}
       {showModal && (

@@ -1,6 +1,33 @@
 import { useRef, useState } from 'react';
 import { api } from '../../api/client';
-import { ImportPreviewResult } from '../../types';
+import { ImportBatchItem, ImportPreviewResult } from '../../types';
+import { printLabels, LabelData } from '../../utils/printLabels';
+
+function labelDataList030(items: ImportBatchItem[]): LabelData[] {
+  const result: LabelData[] = [];
+  for (const item of items.filter((x) => x.row_status !== 'error')) {
+    const qpb = item.qty_per_box ?? 0;
+    const tq  = item.total_qty   ?? 0;
+    const totalBoxes = qpb > 0 && tq > 0 ? Math.ceil(tq / qpb) : (item.total_boxes ?? 0);
+    const remainder  = qpb > 0 && tq > 0 ? tq % qpb : 0;
+    for (let n = 1; n <= totalBoxes; n++) {
+      const isTail = remainder > 0 && n === totalBoxes;
+      result.push({
+        product_code: item.product_code ?? '',
+        product_name: item.product_name ?? '',
+        qty_per_box:  qpb,
+        box_qty:      isTail ? remainder : qpb,
+        box_no:       n,
+        total_boxes:  totalBoxes,
+        is_tail:      isTail,
+        mfg_date:     item.mfg_date ?? '',
+        exp_date:     item.exp_date ?? '',
+        shelf_days:   item.shelf_days ?? '',
+      });
+    }
+  }
+  return result;
+}
 
 interface Props { onToast: (msg: string) => void }
 
@@ -37,11 +64,14 @@ export default function WMSM030({ onToast }: Props) {
   const executePrint = async () => {
     if (!preview) return;
     setLoading(true);
+    const itemsSnapshot = preview.items;
     try {
       const res = await api.executeImport(preview.batch_no, '倉儲人員');
       if (res.success) {
         onToast(res.message ?? `🖨 批次列印完成，共 ${res.data?.total_copies} 張`);
         setPreview(null);
+        const err = printLabels(labelDataList030(itemsSnapshot));
+        if (err) onToast(err);
       } else {
         onToast(`✗ ${res.error}`);
       }
@@ -85,7 +115,12 @@ export default function WMSM030({ onToast }: Props) {
       <div className="card">
         <div className="card-header">
           <div className="card-title">📤 上傳 Excel 檔案</div>
-          <button className="btn btn-ghost btn-sm">⬇ 下載 Excel 範本</button>
+          <a
+            href="/api/import/template"
+            download="WMSM030_template.xlsx"
+            className="btn btn-ghost btn-sm"
+            style={{ textDecoration: 'none' }}
+          >⬇ 下載 Excel 範本</a>
         </div>
         <div className="card-body">
           <input ref={inputRef} type="file" accept=".xlsx" style={{ display: 'none' }}
@@ -118,7 +153,7 @@ export default function WMSM030({ onToast }: Props) {
             <table className="import-tbl">
               <thead>
                 <tr>
-                  <th>列#</th><th>狀態</th><th>品號</th><th>品名</th>
+                  <th>列#</th><th>狀態</th><th>品號</th><th>對照號</th><th>品名</th>
                   <th>單箱數</th><th>總進貨</th><th>總箱數</th>
                   <th>製造日期</th><th>有效日期</th><th>保存期限</th><th>列印張數</th>
                 </tr>
@@ -135,6 +170,7 @@ export default function WMSM030({ onToast }: Props) {
                     <td className="mono" style={{ color: item.row_status === 'error' ? 'var(--err)' : undefined }}>
                       {item.product_code}
                     </td>
+                    <td className="mono">{item.ref_code || '—'}</td>
                     <td>{item.product_name || <span style={{ color: 'var(--soft)' }}>（品號不存在）</span>}</td>
                     <td>{item.qty_per_box}</td>
                     <td>{item.total_qty}</td>

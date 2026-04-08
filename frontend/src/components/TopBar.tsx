@@ -1,4 +1,9 @@
-export default function TopBar() {
+interface Props {
+  operator?: string;
+  onLogout?: () => void;
+}
+
+export default function TopBar({ operator, onLogout }: Props) {
   return (
     <div style={{
       background: 'var(--g1)', padding: '0 28px', height: '56px',
@@ -28,7 +33,18 @@ export default function TopBar() {
         <div style={{
           background: 'rgba(255,255,255,.12)', color: '#fff',
           fontSize: '12px', padding: '5px 12px', borderRadius: '20px',
-        }}>👤 倉儲人員</div>
+        }}>👤 {operator ?? '倉儲人員'}</div>
+        {onLogout && (
+          <button onClick={onLogout} style={{
+            background: 'rgba(255,255,255,.12)', color: 'rgba(255,255,255,.8)',
+            border: '1px solid rgba(255,255,255,.2)', borderRadius: '20px',
+            fontSize: '11.5px', padding: '5px 12px', cursor: 'pointer',
+            fontFamily: 'inherit', transition: 'background .15s',
+          }}
+            onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,.22)')}
+            onMouseOut={(e)  => (e.currentTarget.style.background = 'rgba(255,255,255,.12)')}
+          >登出</button>
+        )}
       </div>
     </div>
   );

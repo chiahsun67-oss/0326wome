@@ -1,4 +1,4 @@
-import { ApiResponse, ImportPreviewResult, PrintHistoryItem, PrintStats, Product, PurchaseOrder } from '../types';
+import { ApiResponse, ImportPreviewResult, PrintHistoryItem, PrintStats, Product, PurchaseOrder, UserInfo } from '../types';
 
 const BASE = '/api';
 
@@ -27,6 +27,12 @@ async function post<T>(path: string, body: unknown): Promise<ApiResponse<T>> {
 }
 
 export const api = {
+  login: (username: string, password: string) =>
+    post<UserInfo>('/auth/login', { username, password }),
+
+  resetPassword: (username: string, new_password: string) =>
+    post<{ hash: string }>('/auth/reset-password', { username, new_password }),
+
   getProduct: (code: string) => get<Product>(`/products/${encodeURIComponent(code)}`),
 
   getPurchaseOrder: (poNo: string) => get<PurchaseOrder>(`/purchase-orders/${encodeURIComponent(poNo)}`),

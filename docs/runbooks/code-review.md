@@ -16,16 +16,19 @@
 ### 後端（Express + TypeScript）
 - [ ] `pool.connect()` 是否在 `try` 區塊內？
 - [ ] `finally` 是否有 `client?.release()`？
-- [ ] 是否有 `await client?.query('ROLLBACK')` 在 catch？
+- [ ] BEGIN 後的早期 return 前是否有 `await client.query('ROLLBACK')`？
 - [ ] SQL 查詢是否使用參數化（`$1, $2`），無字串拼接？
 - [ ] `res.json()` 是否在所有 code path 都會被呼叫？
 - [ ] controller 是否回傳 `{ success, data?, error? }` 格式？
+- [ ] 密碼比對是否使用 `bcrypt.compare()`，禁止明文比對？
+- [ ] 必填 body 欄位是否有空值驗證（回 400 而非 500）？
 
 ### 前端（React TSX）
 - [ ] API 呼叫是否使用 `api/client.ts` 封裝（非直接 fetch）？
 - [ ] 是否處理 `res.success === false` 的情況？
 - [ ] 是否有 loading 狀態防止重複送出？
 - [ ] 表單必填欄位是否有視覺提示（紅色 `*`）？
+- [ ] 動態內容插入 HTML 字串（`window.open` / `innerHTML`）是否有 `esc()` HTML escape？
 
 ### 通用
 - [ ] 是否有硬編碼密碼或 token？

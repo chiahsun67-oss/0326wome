@@ -57,7 +57,20 @@ npm run dev
 
 ---
 
-## 4. 常見問題
+## 4. 登入帳號
+
+| 帳號 | 密碼 | 角色 |
+|------|------|------|
+| admin | wmsm2026 | 系統管理員 |
+| warehouse01 | wmsm2026 | 倉儲人員甲 |
+| warehouse02 | wmsm2026 | 倉儲人員乙 |
+| qa01 | wmsm2026 | 品管人員 |
+
+> 密碼以 bcrypt（cost=10）儲存。忘記密碼請於登入頁點擊「忘記密碼？」。
+
+---
+
+## 5. 常見問題
 
 | 錯誤訊息 | 原因 | 解法 |
 |----------|------|------|
@@ -65,13 +78,16 @@ npm run dev
 | `relation "xxx" does not exist` | Schema 未匯入 | 執行 `psql wmsm -f database/schema.sql` |
 | `500 空 body` | 後端未啟動 或 port 不符 | 確認後端跑在 3000，`vite.config.ts` target 為 3000 |
 | `ECONNREFUSED 3000` | 後端未啟動 | `cd backend && npm run dev` |
+| 忘記密碼後無法登入 | DB 中密碼未更新 | 使用「忘記密碼」頁面重設，或重跑 schema.sql |
 
 ---
 
-## 5. API 端點一覽
+## 6. API 端點一覽
 
 | Method | 路徑 | 說明 |
 |--------|------|------|
+| POST | `/api/auth/login` | 登入（bcrypt 驗證） |
+| POST | `/api/auth/reset-password` | 忘記密碼重設 |
 | GET | `/api/products/:code` | 查詢商品 |
 | GET | `/api/products/search?q=` | 模糊搜尋 |
 | GET | `/api/purchase-orders/:poNo` | 查詢採購單 |
@@ -79,6 +95,7 @@ npm run dev
 | GET | `/api/print-history` | 列印歷史（篩選 + 分頁） |
 | GET | `/api/print-stats` | 統計摘要 |
 | GET | `/api/operators` | 操作人員清單 |
+| GET | `/api/import/template` | 下載 Excel 範本 |
 | POST | `/api/import/preview` | Excel 驗證預覽 |
 | POST | `/api/import/execute` | 執行批次列印（WMSM030） |
 | POST | `/api/uat/confirm` | UAT 簽核 |
@@ -86,13 +103,22 @@ npm run dev
 
 ---
 
-## 6. Excel 範本欄位順序
+## 7. Excel 範本欄位順序
 
-建立 `.xlsx` 時第一列為標題，欄位順序如下：
+點擊「⬇ 下載 Excel 範本」取得範本（`GET /api/import/template`），或依下表自建：
 
-| 品號 | 品名 | 單箱數量 | 總進貨數量 | 製造日期 | 有效日期 | 保存期限(天) | 列印張數 |
-|------|------|---------|-----------|---------|---------|------------|---------|
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| 品號 | ✓ | 商品唯一編號，系統自動帶入品名 |
+| 對照號 | | 選填，對應條碼下方文字 |
+| 品名 | | 可空白，系統依品號自動帶入 |
+| 單箱數量 | ✓ | 正整數 |
+| 總進貨數量 | ✓ | 正整數 |
+| 總箱數 | | 可空白，系統自動計算（無條件進位） |
+| 製造日期 | | YYYY-MM-DD 或 Excel 日期格式 |
+| 有效日期 | | YYYY-MM-DD 或 Excel 日期格式 |
+| 保存期限 | | 天數（整數） |
+| 列印張數 | ✓ | 預設 1 |
 
-- 日期格式：`YYYY-MM-DD` 或 Excel 日期格式均可
-- 品名可留空，系統會從商品主檔自動帶入
+- 日期格式：`YYYY-MM-DD` 或 Excel 日期序號均可
 - 總進貨數量 ÷ 單箱數量若不整除，系統自動進位並顯示警告

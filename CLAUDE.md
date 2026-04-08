@@ -21,7 +21,7 @@
 ├── CLAUDE.md                       ← 專案記憶（你在這裡）
 ├── README.md                       ← 快速啟動指南
 ├── database/
-│   └── schema.sql                  ← PostgreSQL DDL + 種子資料
+│   └── schema.sql                  ← PostgreSQL DDL + 種子資料（密碼已 bcrypt）
 ├── backend/                        ← Express + TypeScript
 │   ├── .env                        ← DB 設定（已建立）
 │   ├── .env.example
@@ -31,6 +31,7 @@
 │   │   ├── types/index.ts
 │   │   ├── routes/index.ts
 │   │   └── controllers/
+│   │       ├── auth.ts             ← 登入 + 忘記密碼（bcrypt）
 │   │       ├── products.ts
 │   │       ├── purchaseOrders.ts
 │   │       ├── printJobs.ts
@@ -40,13 +41,17 @@
 ├── frontend/                       ← React + TSX + Vite
 │   ├── src/
 │   │   ├── main.tsx
-│   │   ├── App.tsx                 ← 頁面路由（ModuleId 切換）
+│   │   ├── App.tsx                 ← 頁面路由（authScreen + ModuleId 切換）
 │   │   ├── types/index.ts
 │   │   ├── api/client.ts           ← fetch 封裝（含空 body 防護）
 │   │   ├── components/             ← TopBar / StepNav / SideBar / Toast
+│   │   ├── utils/
+│   │   │   └── printLabels.ts      ← 共用標籤列印函式（HTML escape）
 │   │   ├── pages/
+│   │   │   ├── Login/index.tsx     ← 登入頁（含忘記密碼連結）
+│   │   │   ├── ForgotPassword/index.tsx ← 忘記密碼（生成 hash + 複製）
 │   │   │   ├── WMSM020/index.tsx   ← 手動套印
-│   │   │   ├── WMSM030/index.tsx   ← Excel 批次匯入
+│   │   │   ├── WMSM030/index.tsx   ← Excel 批次匯入（含列印視窗）
 │   │   │   ├── LabelPreview/index.tsx
 │   │   │   ├── PrintHistory/index.tsx
 │   │   │   └── UATConfirm/index.tsx
@@ -66,6 +71,9 @@
 | 後端 500 空 body | `pool.connect()` 在 try 外，unhandled rejection | 移進 try，改用 `let client` + `client?.release()` |
 | 前端 SyntaxError empty JSON | `res.json()` 無防護 | 改用 `res.text()` + try JSON.parse |
 | API 全部 500 | Vite proxy 指向 port 3001，後端在 3000 | `vite.config.ts` 改為 port 3000 |
+| `executeImport` BEGIN 後早期 return 無 ROLLBACK | 事務懸掛 | 兩個早期 return 前加 `await client.query('ROLLBACK')` |
+| 密碼明文儲存 | auth.ts 直接比對字串 | 改用 `bcrypt`（cost=10），schema 種子資料更新為 hash |
+| 列印視窗 XSS | 品號/品名直接插入 HTML | `printLabels.ts` 加 `esc()` HTML escape |
 
 ## 環境設定（backend/.env）
 ```

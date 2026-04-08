@@ -158,6 +158,7 @@ CREATE TABLE import_batch_items (
   row_no        INTEGER     NOT NULL,
   product_code  VARCHAR(20),
   product_name  VARCHAR(100) DEFAULT '',
+  ref_code      VARCHAR(20)  DEFAULT '',
   qty_per_box   INTEGER,
   total_qty     INTEGER,
   total_boxes   INTEGER,
@@ -170,6 +171,26 @@ CREATE TABLE import_batch_items (
   messages      JSONB        NOT NULL DEFAULT '[]'::JSONB,  -- [{type,message}]
   created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
+
+-- ── 系統使用者 ──────────────────────────────────────────────
+CREATE TABLE users (
+  id            SERIAL       PRIMARY KEY,
+  username      VARCHAR(50)  NOT NULL UNIQUE,
+  password      VARCHAR(100) NOT NULL,               -- ⚠ 正式環境請改用 bcrypt hash
+  display_name  VARCHAR(50)  NOT NULL,
+  department    VARCHAR(50)  NOT NULL DEFAULT '',
+  role          VARCHAR(20)  NOT NULL DEFAULT 'operator'
+                             CHECK (role IN ('admin','operator','inspector')),
+  active        BOOLEAN      NOT NULL DEFAULT TRUE,
+  last_login_at TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE  users                IS '系統使用者帳號';
+COMMENT ON COLUMN users.username       IS '登入帳號（唯一）';
+COMMENT ON COLUMN users.password       IS '密碼（明文僅供 Demo，正式環境請改 bcrypt）';
+COMMENT ON COLUMN users.role           IS 'admin=管理員 / operator=倉儲人員 / inspector=品管人員';
 
 -- ── UAT 確認簽核 ──────────────────────────────────────────
 CREATE TABLE uat_confirmations (
@@ -186,6 +207,7 @@ CREATE TABLE uat_confirmations (
 );
 
 -- ── 索引 ──────────────────────────────────────────────────
+CREATE INDEX idx_users_username       ON users(username);
 CREATE INDEX idx_products_code        ON products(code);
 CREATE INDEX idx_po_po_no             ON purchase_orders(po_no);
 CREATE INDEX idx_po_items_po_id       ON po_items(po_id);
@@ -237,6 +259,13 @@ LEFT JOIN purchase_orders po ON po.id = pj.po_id
 ORDER BY pj.printed_at DESC NULLS LAST;
 
 -- ── 種子資料 ──────────────────────────────────────────────
+-- 使用者（密碼：wmsm2026，以 bcrypt cost=10 hash）
+INSERT INTO users (username, password, display_name, department, role) VALUES
+  ('admin',       '$2b$10$XfF6ehhShrlPCibcRL/DTeADFq/I3BwSK2.oKb0MJGNxaCTw72vSy', '系統管理員', '資訊部', 'admin'),
+  ('warehouse01', '$2b$10$E7vtoc/fxNzZRRv69Yis6OIPBZS3RGtk3fTSnSlQnhWrjy1nMrbiO', '倉儲人員甲', '倉儲部', 'operator'),
+  ('warehouse02', '$2b$10$SVORciFP1nh3vx0o25zviuEr.8r5qrlyVsn4GvZJ/NQ.qCcpnXbHG', '倉儲人員乙', '倉儲部', 'operator'),
+  ('qa01',        '$2b$10$WVZseaGSieZMuJEvKAe3CuNCvdG0VUgIa/07DWIA9z5vU57mcTHZm', '品管人員',   '品管部', 'inspector');
+
 INSERT INTO suppliers (code, name) VALUES
   ('SUP001', '吉伊卡哇股份有限公司'),
   ('SUP002', 'Sanrio 台灣代理商'),
