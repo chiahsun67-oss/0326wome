@@ -6,7 +6,7 @@ export async function getProductByCode(req: Request, res: Response): Promise<voi
   const { code } = req.params;
   try {
     const result = await pool.query<Product>(
-      'SELECT id, code, name, ref_code, unit, active FROM products WHERE code = $1 AND active = TRUE',
+      'SELECT id, code, name, ref_code, unit, shelf_days, active FROM products WHERE code = $1 AND active = TRUE',
       [code.trim()]
     );
     if (result.rowCount === 0) {
@@ -23,7 +23,7 @@ export async function searchProducts(req: Request, res: Response): Promise<void>
   const q = String(req.query.q || '').trim();
   try {
     const result = await pool.query<Product>(
-      `SELECT id, code, name, ref_code, unit
+      `SELECT id, code, name, ref_code, unit, shelf_days
        FROM products
        WHERE active = TRUE AND (code ILIKE $1 OR name ILIKE $1)
        ORDER BY code LIMIT 20`,

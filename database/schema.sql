@@ -16,6 +16,7 @@ CREATE TABLE products (
   name        VARCHAR(100) NOT NULL,
   ref_code    VARCHAR(20)  DEFAULT '',
   unit        VARCHAR(10)  DEFAULT '個',
+  shelf_days  INTEGER      CHECK (shelf_days > 0),
   active      BOOLEAN      NOT NULL DEFAULT TRUE,
   created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
@@ -24,6 +25,7 @@ CREATE TABLE products (
 COMMENT ON TABLE products IS '商品主檔';
 COMMENT ON COLUMN products.code IS '品號（唯一）';
 COMMENT ON COLUMN products.ref_code IS '對照號';
+COMMENT ON COLUMN products.shelf_days IS '預設保存期限（天），帶入套印作業時自動填充';
 
 -- ── 供應商 ──────────────────────────────────────────────────
 CREATE TABLE suppliers (
@@ -271,13 +273,13 @@ INSERT INTO suppliers (code, name) VALUES
   ('SUP002', 'Sanrio 台灣代理商'),
   ('SUP003', '角落小夥伴貿易有限公司');
 
-INSERT INTO products (code, name, ref_code) VALUES
-  ('50037631', '吉伊卡哇透明直傘',  '0741310'),
-  ('A100001',  'Hello Kitty 保溫杯', ''),
-  ('B200002',  'Sanrio 馬克杯組合',  ''),
-  ('C300003',  '布丁狗玩偶',         ''),
-  ('E400004',  '美樂蒂購物袋',       ''),
-  ('F500005',  '角落小夥伴毛毯',     '1234567');
+INSERT INTO products (code, name, ref_code, shelf_days) VALUES
+  ('50037631', '吉伊卡哇透明直傘',  '0741310', 365),
+  ('A100001',  'Hello Kitty 保溫杯', '',        731),
+  ('B200002',  'Sanrio 馬克杯組合',  '',        730),
+  ('C300003',  '布丁狗玩偶',         '',        NULL),
+  ('E400004',  '美樂蒂購物袋',       '',        NULL),
+  ('F500005',  '角落小夥伴毛毯',     '1234567', NULL);
 
 INSERT INTO purchase_orders (po_no, po_date, supplier_name, remark) VALUES
   ('PO-20250311-001', '2025-03-11', '吉伊卡哇股份有限公司', ''),

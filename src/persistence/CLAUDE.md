@@ -27,7 +27,7 @@ const pool = new Pool({
 | `print_jobs` | 列印批次（job_no 由 trigger 產生） |
 | `print_job_items` | 列印明細 |
 | `import_batches` | Excel 匯入批次（batch_no 由 trigger 產生） |
-| `import_batch_items` | 匯入明細（含驗證結果 JSONB） |
+| `import_batch_items` | 匯入明細（含驗證結果 JSONB、`ref_code` VARCHAR(20) DEFAULT ''） |
 | `uat_confirmations` | UAT 簽核紀錄 |
 
 ## View

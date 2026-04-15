@@ -16,7 +16,10 @@
 | GET | `/api/operators` | printJobs.getOperators | 操作人員清單 |
 | POST | `/api/import/preview` | imports.previewImport | Excel 驗證（multer） |
 | POST | `/api/import/execute` | imports.executeImport | 執行批次列印 |
+| GET  | `/api/import/template` | imports.downloadTemplate | 下載 Excel 範本（10 欄含對照號） |
 | POST | `/api/uat/confirm` | uat.saveUATConfirmation | UAT 簽核儲存 |
+| GET  | `/api/db-check` | — | DB 連線診斷（含資料表清單） |
+| GET  | `/health` | — | 服務健康檢查 |
 
 ## 統一回應格式
 

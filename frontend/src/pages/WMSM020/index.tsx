@@ -1,14 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { api } from '../../api/client';
 import { POItem } from '../../types';
 import { printLabels, LabelData } from '../../utils/printLabels';
+
+type WorkItem = POItem & { master_shelf_days: number | null; selected: boolean };
 
 interface Props { onToast: (msg: string) => void; onSwitchHistory: () => void; operator?: string; }
 
 function WmsmLabel({ d }: { d: LabelData }) {
   return (
     <div className="wmsm-label">
-      {/* 品號 / 品名 */}
       <div className="wl-row2">
         <div className="wl-cell">
           <span className="wl-key">品號品號：</span>
@@ -19,8 +20,6 @@ function WmsmLabel({ d }: { d: LabelData }) {
           <span className="wl-val">{d.product_name || '—'}</span>
         </div>
       </div>
-
-      {/* 本箱數量 / 總箱數 */}
       <div className="wl-row2">
         <div className="wl-cell">
           <span className="wl-key">箱內總箱入數：</span>
@@ -34,8 +33,6 @@ function WmsmLabel({ d }: { d: LabelData }) {
           <span className="wl-val">{d.total_boxes || '—'}</span>
         </div>
       </div>
-
-      {/* 箱型說明 */}
       <div className="wl-box-breakdown">
         {d.is_tail ? (
           <div className="wl-breakdown-row wl-tail">
@@ -49,15 +46,11 @@ function WmsmLabel({ d }: { d: LabelData }) {
           </div>
         )}
       </div>
-
-      {/* 箱號（自動填入） */}
       <div className="wl-remark">
         備註：第 <strong style={{ fontSize: '15px' }}>{d.box_no}</strong> 箱／共{' '}
         <strong style={{ fontSize: '15px' }}>{d.total_boxes}</strong> 箱
       </div>
       <div className="wl-remark-blank" />
-
-      {/* 效期 */}
       <div className="wl-row3">
         <div className="wl-cell">
           <span className="wl-key">製造日期：</span>
@@ -77,33 +70,40 @@ function WmsmLabel({ d }: { d: LabelData }) {
   );
 }
 
-const EMPTY_ITEM = (): POItem => ({
+const EMPTY_ITEM = (): WorkItem => ({
   product_code: '', product_name: '', ref_code: '',
   qty_per_box: '', total_qty: '', total_boxes: '',
   print_copies: 1, mfg_date: '', exp_date: '', shelf_days: '',
+  master_shelf_days: null,
+  selected: true,
 });
 
+function calcShelfDays(mfg: string, exp: string): number | null {
+  if (!mfg || !exp) return null;
+  return Math.round((new Date(exp).getTime() - new Date(mfg).getTime()) / 86400000);
+}
+
 export default function WMSM020({ onToast, onSwitchHistory, operator = '倉儲人員' }: Props) {
-  const [poNo, setPoNo]         = useState('PO-20250311-001');
-  const [poDate, setPoDate]     = useState('2025-03-11');
-  const [supplier, setSupplier] = useState('');
-  const [remark, setRemark]     = useState('');
-  const [mfgDate, setMfgDate]   = useState('2024-06-01');
-  const [expDate, setExpDate]   = useState('');
-  const [shelfDays, setShelfDays] = useState<number | ''>(365);
-  const [items, setItems]       = useState<POItem[]>([EMPTY_ITEM(), EMPTY_ITEM()]);
+  const [poNo, setPoNo]           = useState('PO-20250311-001');
+  const [poDate, setPoDate]       = useState('2025-03-11');
+  const [supplier, setSupplier]   = useState('');
+  const [remark, setRemark]       = useState('');
+  const [items, setItems]         = useState<WorkItem[]>([EMPTY_ITEM(), EMPTY_ITEM()]);
   const [showModal, setShowModal] = useState(false);
   const [showLabelPreview, setShowLabelPreview] = useState(false);
-  const [loading, setLoading]   = useState(false);
+  const [loading, setLoading]     = useState(false);
 
-  /** 每箱展開一筆 LabelData，尾數箱自動標示 */
+  const allSelected = items.length > 0 && items.every(i => i.selected);
+
+  /** 每箱展開一筆 LabelData（只處理已勾選品項），尾數箱自動標示 */
   const labelDataList = (): LabelData[] => {
     const result: LabelData[] = [];
-    for (const i of items.filter((x) => x.product_code)) {
-      const qpb = Number(i.qty_per_box) || 0;
-      const tq  = Number(i.total_qty)   || 0;
+    for (const i of items.filter(x => x.product_code && x.selected)) {
+      const qpb        = Number(i.qty_per_box) || 0;
+      const tq         = Number(i.total_qty)   || 0;
       const totalBoxes = qpb > 0 && tq > 0 ? Math.ceil(tq / qpb) : (Number(i.total_boxes) || 0);
       const remainder  = qpb > 0 && tq > 0 ? tq % qpb : 0;
+      const shelfDays  = calcShelfDays(i.mfg_date, i.exp_date);
       for (let n = 1; n <= totalBoxes; n++) {
         const isTail = remainder > 0 && n === totalBoxes;
         result.push({
@@ -114,9 +114,9 @@ export default function WMSM020({ onToast, onSwitchHistory, operator = '倉儲�
           box_no:       n,
           total_boxes:  totalBoxes,
           is_tail:      isTail,
-          mfg_date:     mfgDate,
-          exp_date:     expDate,
-          shelf_days:   shelfDays,
+          mfg_date:     i.mfg_date,
+          exp_date:     i.exp_date,
+          shelf_days:   shelfDays ?? '',
         });
       }
     }
@@ -127,34 +127,6 @@ export default function WMSM020({ onToast, onSwitchHistory, operator = '倉儲�
     const err = printLabels(labelDataList());
     if (err) onToast(err);
   };
-
-  // 效期三選二計算
-  const handleExpiryChange = useCallback((field: 'mfg' | 'exp' | 'shelf', value: string) => {
-    const toMs = (d: string) => d ? new Date(d).getTime() : NaN;
-    const addDays = (d: string, days: number) => {
-      const dt = new Date(d);
-      dt.setDate(dt.getDate() + days);
-      return dt.toISOString().slice(0, 10);
-    };
-    const diffDays = (a: string, b: string) => {
-      const diff = toMs(b) - toMs(a);
-      return isNaN(diff) ? '' : Math.round(diff / 86400000);
-    };
-
-    if (field === 'mfg') {
-      setMfgDate(value);
-      if (shelfDays) setExpDate(addDays(value, Number(shelfDays)));
-      else if (expDate) setShelfDays(diffDays(value, expDate) as number | '');
-    } else if (field === 'exp') {
-      setExpDate(value);
-      if (mfgDate) setShelfDays(diffDays(mfgDate, value) as number | '');
-      else if (shelfDays) setMfgDate(addDays(value, -Number(shelfDays)));
-    } else {
-      setShelfDays(value === '' ? '' : Number(value));
-      if (mfgDate && value) setExpDate(addDays(mfgDate, Number(value)));
-      else if (expDate && value) setMfgDate(addDays(expDate, -Number(value)));
-    }
-  }, [mfgDate, expDate, shelfDays]);
 
   const doFind = async () => {
     if (!poNo.trim()) return;
@@ -167,15 +139,17 @@ export default function WMSM020({ onToast, onSwitchHistory, operator = '倉儲�
         setRemark(res.data.remark);
         setItems(res.data.items.map((i) => ({
           ...i,
-          qty_per_box:  i.qty_per_box,
-          total_qty:    i.total_qty,
-          total_boxes:  i.total_boxes,
-          print_copies: i.total_boxes,   // ← 帶入採購單時，列印張數 = 總箱數
-          mfg_date:     i.mfg_date ?? '',
-          exp_date:     i.exp_date ?? '',
-          shelf_days:   i.shelf_days ?? '',
+          qty_per_box:       i.qty_per_box,
+          total_qty:         i.total_qty,
+          total_boxes:       i.total_boxes,
+          print_copies:      i.total_boxes,
+          mfg_date:          i.mfg_date ?? '',
+          exp_date:          i.exp_date  ?? '',
+          shelf_days:        i.shelf_days ?? '',
+          master_shelf_days: typeof i.shelf_days === 'number' ? i.shelf_days : null,
+          selected:          true,
         })));
-        onToast(`✓ 採購單 ${poNo} 帶入 ${res.data.items.length} 筆商品`);
+        onToast(`✓ 採購單 ${poNo} 帶入 ${res.data.items.length} 筆商品，請確認效期後勾選執行列印`);
       } else {
         onToast(`✗ ${res.error ?? '查無採購單'}`);
       }
@@ -191,7 +165,12 @@ export default function WMSM020({ onToast, onSwitchHistory, operator = '倉儲�
     if (!code.trim()) return;
     const res = await api.getProduct(code.trim());
     if (res.success && res.data) {
-      newItems[idx] = { ...newItems[idx], product_name: res.data.name, ref_code: res.data.ref_code };
+      newItems[idx] = {
+        ...newItems[idx],
+        product_name:      res.data.name,
+        ref_code:          res.data.ref_code,
+        master_shelf_days: res.data.shelf_days ?? null,
+      };
       setItems([...newItems]);
     }
   };
@@ -199,38 +178,62 @@ export default function WMSM020({ onToast, onSwitchHistory, operator = '倉儲�
   const updateItem = (idx: number, field: keyof POItem, value: string | number) => {
     const newItems = [...items];
     const item = { ...newItems[idx], [field]: value };
-    // 自動計算 total_boxes，並同步帶入列印張數
+    // 輸入製造日期且品項有主檔保存期限 → 自動推算有效日期
+    if (field === 'mfg_date' && typeof value === 'string' && value && item.master_shelf_days !== null) {
+      const dt = new Date(value);
+      dt.setDate(dt.getDate() + item.master_shelf_days);
+      item.exp_date = dt.toISOString().slice(0, 10);
+    }
+    // 自動計算 total_boxes 並同步列印張數
     const box   = Number(field === 'qty_per_box' ? value : item.qty_per_box);
     const total = Number(field === 'total_qty'   ? value : item.total_qty);
     if (box > 0 && total > 0) {
       const boxes = Math.ceil(total / box);
       item.total_boxes  = boxes;
-      item.print_copies = boxes;   // ← 列印張數自動 = 總箱數
+      item.print_copies = boxes;
     }
     newItems[idx] = item;
     setItems(newItems);
   };
 
-  const totalCopies = items.reduce((s, i) => s + Number(i.print_copies || 0), 0);
+  const toggleSelect = (idx: number) => {
+    const newItems = [...items];
+    newItems[idx] = { ...newItems[idx], selected: !newItems[idx].selected };
+    setItems(newItems);
+  };
+
+  const toggleAll = () => {
+    setItems(items.map(i => ({ ...i, selected: !allSelected })));
+  };
+
+  const selectedItems   = items.filter(i => i.selected && i.product_code);
+  const totalCopies     = selectedItems.reduce((s, i) => s + Number(i.print_copies || 0), 0);
+
+  // 已勾選品項中，有主檔保存期限且效期天數不符者
+  const expiryMismatches = selectedItems.filter(i => {
+    if (i.master_shelf_days === null) return false;
+    const computed = calcShelfDays(i.mfg_date, i.exp_date);
+    return computed !== null && computed !== i.master_shelf_days;
+  });
 
   const doPrint = async () => {
     setLoading(true);
     try {
       const res = await api.createPrintJob({
         source_module: 'WMSM020',
-        po_no: poNo.trim() || undefined,
+        po_no:         poNo.trim() || undefined,
         operator,
-        items: items.filter((i) => i.product_code).map((i) => ({
-          product_code: i.product_code,
-          product_name: i.product_name,
-          ref_code: i.ref_code,
-          qty_per_box: Number(i.qty_per_box) || 1,
-          total_qty: Number(i.total_qty) || 0,
-          total_boxes: Number(i.total_boxes) || 0,
-          print_copies: Number(i.print_copies) || 1,
-          mfg_date: mfgDate || null,
-          exp_date: expDate || null,
-          shelf_days: shelfDays !== '' ? Number(shelfDays) : null,
+        items: selectedItems.map((i) => ({
+          product_code:  i.product_code,
+          product_name:  i.product_name,
+          ref_code:      i.ref_code,
+          qty_per_box:   Number(i.qty_per_box)  || 1,
+          total_qty:     Number(i.total_qty)    || 0,
+          total_boxes:   Number(i.total_boxes)  || 0,
+          print_copies:  Number(i.print_copies) || 1,
+          mfg_date:      i.mfg_date || null,
+          exp_date:      i.exp_date  || null,
+          shelf_days:    calcShelfDays(i.mfg_date, i.exp_date),
         })),
       });
       setShowModal(false);
@@ -256,14 +259,14 @@ export default function WMSM020({ onToast, onSwitchHistory, operator = '倉儲�
 
       <div className="page-title">
         <h2><span className="module-tag">WMSM020</span> 進貨麥頭標籤套印作業</h2>
-        <p>適用情境：進貨時手動輸入商品資料，或透過採購單號批次帶入，產生並列印麥頭標籤。</p>
+        <p>適用情境：進貨時手動輸入商品資料，或透過採購單號批次帶入，勾選品項並填寫效期後列印麥頭標籤。</p>
       </div>
 
       {/* 步驟 */}
       <div className="step-guide">
-        {['輸入採購單號','填寫商品資料','填寫效期','確認張數列印'].map((s,i) => (
+        {['輸入採購單號', '勾選品項並填寫效期', '確認張數列印'].map((s, i) => (
           <div key={i} className={`sg-step ${i === 0 ? 'done' : i === 1 ? 'current' : ''}`}>
-            <div className="sg-num">步驟 {i+1}</div>
+            <div className="sg-num">步驟 {i + 1}</div>
             <div className="sg-title">{s}</div>
           </div>
         ))}
@@ -272,8 +275,8 @@ export default function WMSM020({ onToast, onSwitchHistory, operator = '倉儲�
       <div className="tip">
         <div className="tip-icon">💡</div>
         <div className="tip-text">
-          <strong>有採購單號時：</strong>直接輸入採購單號並按「查詢」，系統會自動帶入商品清單。<br />
-          <strong>無採購單號時：</strong>按「新增列」手動逐筆輸入。
+          <strong>有採購單號時：</strong>輸入採購單號並按「查詢」帶入品項，勾選欲列印的品項並填寫製造日期及有效日期，系統自動比對商品主檔保存期限。<br />
+          <strong>無採購單號時：</strong>按「新增列」手動逐筆輸入品號及效期。
         </div>
       </div>
 
@@ -284,7 +287,7 @@ export default function WMSM020({ onToast, onSwitchHistory, operator = '倉儲�
           <span className="badge badge-new">可略過，直接手動填寫</span>
         </div>
         <div className="card-body">
-          <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 1fr 1fr 1fr', gap: '12px' }}>
             <div className="field">
               <div className="field-label">採購單號</div>
               <div className="input-group">
@@ -310,100 +313,138 @@ export default function WMSM020({ onToast, onSwitchHistory, operator = '倉儲�
         </div>
       </div>
 
-      {/* 效期資料 */}
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">📅 效期資料</div>
-          <span className="badge badge-warn">三欄填任意兩欄，第三欄自動計算</span>
-        </div>
-        <div className="card-body">
-          <div className="expiry-box">
-            <div className="expiry-title">⚠️ 效期填寫規則（三選二）</div>
-            <div className="expiry-rule">
-              只需填寫以下三個欄位中的<strong>任意兩個</strong>，系統會自動計算第三個。<br />
-              ① 製造日期 ＋ ② 有效日期 → 自動算出保存期限<br />
-              ① 製造日期 ＋ ③ 保存期限 → 自動算出有效日期<br />
-              ② 有效日期 ＋ ③ 保存期限 → 自動算出製造日期
-            </div>
-            <div className="form-row-3">
-              <div className="field">
-                <div className="field-label">① 製造日期</div>
-                <input type="date" value={mfgDate} onChange={(e) => handleExpiryChange('mfg', e.target.value)} />
-              </div>
-              <div className="field">
-                <div className="field-label">② 有效日期</div>
-                <input type="date" value={expDate} onChange={(e) => handleExpiryChange('exp', e.target.value)} className={expDate ? 'auto-filled' : ''} />
-                <div className="field-hint">🔵 可自動計算</div>
-              </div>
-              <div className="field">
-                <div className="field-label">③ 保存期限（天）</div>
-                <input type="number" value={shelfDays} onChange={(e) => handleExpiryChange('shelf', e.target.value)} placeholder="天數" min="1" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 品項明細 */}
+      {/* 品項明細（含效期） */}
       <div className="card">
         <div className="card-header">
           <div className="card-title">📦 品項明細</div>
-          <button className="btn btn-outline btn-sm" onClick={() => setItems([...items, EMPTY_ITEM()])}>＋ 新增列</button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {expiryMismatches.length > 0 && (
+              <span className="badge badge-err">⚠ {expiryMismatches.length} 筆效期與主檔不符</span>
+            )}
+            <button className="btn btn-outline btn-sm" onClick={() => setItems([...items, EMPTY_ITEM()])}>＋ 新增列</button>
+          </div>
         </div>
-        <div className="card-body" style={{ padding: 0 }}>
+        <div className="card-body" style={{ padding: 0, overflowX: 'auto' }}>
           <table className="tbl">
             <thead>
               <tr>
-                <th style={{ width: '32px' }}>#</th>
+                <th style={{ width: '36px', textAlign: 'center' }}>
+                  <input type="checkbox" checked={allSelected} onChange={toggleAll} title="全選／取消全選" />
+                </th>
+                <th style={{ width: '28px' }}>#</th>
                 <th>品號 <span style={{ color: 'var(--err)' }}>*</span></th>
-                <th>品名（自動帶入）</th>
+                <th>品名</th>
                 <th>對照號</th>
-                <th>單箱數量 <span style={{ color: 'var(--err)' }}>*</span></th>
-                <th>總進貨數量 <span style={{ color: 'var(--err)' }}>*</span></th>
-                <th>總箱數（自動）</th>
+                <th>單箱數 <span style={{ color: 'var(--err)' }}>*</span></th>
+                <th>總數量 <span style={{ color: 'var(--err)' }}>*</span></th>
+                <th>總箱數</th>
+                <th>製造日期</th>
+                <th>有效日期</th>
+                <th>保存期限（天）</th>
+                <th style={{ width: '60px', textAlign: 'center' }}>效期</th>
                 <th>列印張數 <span style={{ color: 'var(--err)' }}>*</span></th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {items.map((item, idx) => (
-                <tr key={idx}>
-                  <td className="row-no">{idx + 1}</td>
-                  <td>
-                    <input type="text" value={item.product_code} style={{ width: '100px' }} placeholder="品號"
-                      onChange={(e) => autoFillName(idx, e.target.value)} />
-                  </td>
-                  <td>
-                    <input type="text" value={item.product_name} readOnly style={{ width: '130px' }}
-                      className={item.product_name ? 'auto-filled' : ''} placeholder="自動帶入" />
-                  </td>
-                  <td><input type="text" value={item.ref_code} style={{ width: '80px' }} placeholder="（選填）"
-                    onChange={(e) => updateItem(idx, 'ref_code', e.target.value)} /></td>
-                  <td><input type="number" value={item.qty_per_box} style={{ width: '70px' }} min="1"
-                    onChange={(e) => updateItem(idx, 'qty_per_box', Number(e.target.value))} /></td>
-                  <td><input type="number" value={item.total_qty} style={{ width: '80px' }} min="1"
-                    onChange={(e) => updateItem(idx, 'total_qty', Number(e.target.value))} /></td>
-                  <td><input type="number" value={item.total_boxes} style={{ width: '70px' }} readOnly
-                    className={item.total_boxes ? 'auto-filled' : ''} /></td>
-                  <td><input type="number" value={item.print_copies} style={{ width: '60px' }} min="1"
-                    onChange={(e) => updateItem(idx, 'print_copies', Number(e.target.value))} /></td>
-                  <td>
-                    <button className="del-btn" onClick={() => setItems(items.filter((_, i) => i !== idx))}>✕</button>
-                  </td>
-                </tr>
-              ))}
+              {items.map((item, idx) => {
+                const computed  = calcShelfDays(item.mfg_date, item.exp_date);
+                const hasMaster = item.master_shelf_days !== null;
+                const mismatch  = hasMaster && computed !== null && computed !== item.master_shelf_days;
+                const okMatch   = hasMaster && computed !== null && computed === item.master_shelf_days;
+                return (
+                  <tr key={idx} style={{ opacity: item.selected ? 1 : 0.5 }}>
+                    <td style={{ textAlign: 'center' }}>
+                      <input type="checkbox" checked={item.selected} onChange={() => toggleSelect(idx)} />
+                    </td>
+                    <td className="row-no">{idx + 1}</td>
+                    <td>
+                      <input type="text" value={item.product_code} style={{ width: '90px' }} placeholder="品號"
+                        onChange={(e) => autoFillName(idx, e.target.value)} />
+                    </td>
+                    <td>
+                      <input type="text" value={item.product_name} readOnly style={{ width: '120px' }}
+                        className={item.product_name ? 'auto-filled' : ''} placeholder="自動帶入" />
+                    </td>
+                    <td>
+                      <input type="text" value={item.ref_code} style={{ width: '70px' }} placeholder="（選填）"
+                        onChange={(e) => updateItem(idx, 'ref_code', e.target.value)} />
+                    </td>
+                    <td>
+                      <input type="number" value={item.qty_per_box} style={{ width: '60px' }} min="1"
+                        onChange={(e) => updateItem(idx, 'qty_per_box', Number(e.target.value))} />
+                    </td>
+                    <td>
+                      <input type="number" value={item.total_qty} style={{ width: '70px' }} min="1"
+                        onChange={(e) => updateItem(idx, 'total_qty', Number(e.target.value))} />
+                    </td>
+                    <td>
+                      <input type="number" value={item.total_boxes} style={{ width: '60px' }} readOnly
+                        className={item.total_boxes ? 'auto-filled' : ''} />
+                    </td>
+                    <td>
+                      <input type="date" value={item.mfg_date} style={{ width: '130px' }}
+                        onChange={(e) => updateItem(idx, 'mfg_date', e.target.value)} />
+                    </td>
+                    <td>
+                      <input type="date" value={item.exp_date} style={{ width: '130px' }}
+                        onChange={(e) => updateItem(idx, 'exp_date', e.target.value)} />
+                    </td>
+                    <td>
+                      <input type="number" value={computed ?? ''} readOnly style={{ width: '75px' }}
+                        className={computed !== null ? 'auto-filled' : ''}
+                        placeholder="自動計算" />
+                      {hasMaster && (
+                        <div style={{ fontSize: '10px', color: 'var(--soft)', marginTop: '2px' }}>
+                          主檔：{item.master_shelf_days} 天
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {mismatch && (
+                        <span title={`主檔：${item.master_shelf_days} 天，填寫：${computed} 天`}
+                          style={{ color: '#d97706', fontSize: '16px', cursor: 'default' }}>⚠️</span>
+                      )}
+                      {okMatch && (
+                        <span style={{ color: '#16a34a', fontSize: '16px' }}>✓</span>
+                      )}
+                    </td>
+                    <td>
+                      <input type="number" value={item.print_copies} style={{ width: '55px' }} min="1"
+                        onChange={(e) => updateItem(idx, 'print_copies', Number(e.target.value))} />
+                    </td>
+                    <td>
+                      <button className="del-btn" onClick={() => setItems(items.filter((_, i) => i !== idx))}>✕</button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* 效期不符彙總警示 */}
+      {expiryMismatches.length > 0 && (
+        <div style={{ marginBottom: '12px', padding: '10px 14px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px' }}>
+          <div style={{ fontWeight: 600, color: '#92400e', marginBottom: '6px' }}>
+            ⚠️ 以下已勾選品項之保存期限與商品主檔不符，請確認後再執行列印：
+          </div>
+          {expiryMismatches.map((i, idx) => (
+            <div key={idx} style={{ fontSize: '12.5px', color: '#78350f', lineHeight: 1.8 }}>
+              【{i.product_code}】{i.product_name}：主檔 {i.master_shelf_days} 天，目前填寫 {calcShelfDays(i.mfg_date, i.exp_date)} 天
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="btn-bar">
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>🖨 執行列印</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)} disabled={selectedItems.length === 0}>🖨 執行列印</button>
         <button className="btn btn-outline" onClick={() => setShowLabelPreview(true)}>👁 預覽標籤樣式</button>
         <button className="btn btn-ghost" onClick={() => setItems([EMPTY_ITEM()])}>🗑 清除全部</button>
         <span style={{ flex: 1 }} />
         <span style={{ fontSize: '12px', color: 'var(--soft)' }}>
-          共 {items.filter((i) => i.product_code).length} 筆，合計 {totalCopies} 張
+          已勾選 {selectedItems.length} 筆，合計 {totalCopies} 張
         </span>
       </div>
 
@@ -421,7 +462,7 @@ export default function WMSM020({ onToast, onSwitchHistory, operator = '倉儲�
             </div>
             <div className="print-area" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
               {labelDataList().length === 0
-                ? <div style={{ color: 'var(--soft)', fontSize: '13px' }}>尚無品項資料，請先填寫品項明細</div>
+                ? <div style={{ color: 'var(--soft)', fontSize: '13px' }}>尚無已勾選品項，請先勾選品項明細</div>
                 : labelDataList().map((d, i) => <WmsmLabel key={i} d={d} />)
               }
             </div>
@@ -434,9 +475,14 @@ export default function WMSM020({ onToast, onSwitchHistory, operator = '倉儲�
         <div className="modal-overlay">
           <div className="modal-box">
             <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--g1)', marginBottom: '12px' }}>🖨 確認列印</div>
+            {expiryMismatches.length > 0 && (
+              <div style={{ marginBottom: '14px', padding: '8px 12px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', fontSize: '12.5px', color: '#92400e' }}>
+                ⚠️ 注意：有 {expiryMismatches.length} 筆效期與商品主檔不符，確定仍要列印？
+              </div>
+            )}
             <div style={{ fontSize: '13.5px', color: 'var(--mid)', lineHeight: 1.8, marginBottom: '20px' }}>
               即將列印 <strong style={{ color: 'var(--g1)', fontSize: '16px' }}>{totalCopies} 張</strong> 標籤，
-              共 {items.filter((i) => i.product_code).length} 個品項。<br />
+              共 {selectedItems.length} 個品項。<br />
               印表機：<strong>Zebra ZT230 - 倉儲A線</strong><br />
               <span style={{ color: 'var(--soft)', fontSize: '12px' }}>確認後標籤將直接送至條碼機列印，請確保紙張已備妥。</span>
             </div>

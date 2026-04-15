@@ -5,6 +5,7 @@ export interface Product {
   name: string;
   ref_code: string;
   unit: string;
+  shelf_days: number | null;
   active: boolean;
 }
 

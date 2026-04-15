@@ -13,7 +13,7 @@ export async function getPurchaseOrder(req: Request, res: Response): Promise<voi
        FROM purchase_orders WHERE po_no = $1`,
       [poNo.trim()]
     );
-    if (poResult.rowCount === 0) {
+    if (!poResult.rowCount) {
       res.status(404).json({ success: false, error: `採購單號「${poNo}」不存在` } satisfies ApiResponse);
       return;
     }

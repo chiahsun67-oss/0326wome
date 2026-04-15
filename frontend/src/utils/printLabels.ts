@@ -60,20 +60,21 @@ export function printLabels(labels: LabelData[]): string | null {
     <title>麥頭標籤列印</title>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
-      @page { size: A4 portrait; margin: 10mm; }
+      @page { size: 8cm 11cm; margin: 0; }
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: 'Noto Sans TC', sans-serif; background: #fff; }
-      .labels { display: flex; flex-wrap: wrap; gap: 8mm; padding: 4mm; }
+      .labels { display: block; }
 
-      /* ── 標籤主體 8cm × 11cm ── */
+      /* ── 標籤主體 8cm × 11cm，每張獨立一頁 ── */
       .label {
         width: 8cm; height: 11cm;
         border: 1.5px dashed #555;
         display: flex; flex-direction: column;
         font-size: 12px; color: #111;
-        break-inside: avoid; page-break-inside: avoid;
+        page-break-after: always; break-after: page;
         overflow: hidden;
       }
+      .label:last-child { page-break-after: avoid; break-after: avoid; }
       .row2 { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #888; }
       .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; }
       .cell { padding: 5px 7px; border-right: 1px solid #888; display: flex; flex-direction: column; gap: 1px; }
