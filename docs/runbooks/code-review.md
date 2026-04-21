@@ -29,6 +29,7 @@
 - [ ] 是否有 loading 狀態防止重複送出？
 - [ ] 表單必填欄位是否有視覺提示（紅色 `*`）？
 - [ ] 動態內容插入 HTML 字串（`window.open` / `innerHTML`）是否有 `esc()` HTML escape？
+- [ ] UATConfirm：修改建議是否只在 `fail` 狀態下顯示？`pass` 切換時是否清空 error_type/suggestion？
 
 ### 通用
 - [ ] 是否有硬編碼密碼或 token？

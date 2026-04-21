@@ -34,7 +34,7 @@ WMSM 麥頭印標系統採用前後端分離架構：
 │  users │ products │ purchase_orders      │
 │  po_items │ print_jobs                   │
 │  print_job_items │ import_batches        │
-│  import_batch_items │ uat_…             │
+│  import_batch_items │ uat_confirmations │
 │  v_duplicate_prints │ v_print_…        │
 └──────────────────────────────────────────┘
 ```
@@ -88,6 +88,13 @@ sequence 必須事先存在才不會報錯，trigger 則是 execution-time。
 `frontend/src/utils/printLabels.ts` 提供 `printLabels(labels: LabelData[]): string | null`，
 WMSM020 與 WMSM030 共用。所有動態欄位（品號、品名、日期）透過 `esc()` 進行 HTML escape，
 防止列印視窗中的 XSS。
+
+### 8. UAT 驗收確認頁（UATConfirm）
+- **狀態機**：每個確認項目為 tri-state — `undefined`（未作答）/ `'pass'`（綠勾）/ `'fail'`（紅叉）
+- **UI**：圓形雙按鈕取代 checkbox；標記 `fail` 時才展開「錯誤類型 + 修改建議」
+- **進度條**：`doneCount / total` 橘紅漸層，有進度時附流光 CSS animation
+- **資料表**：`uat_confirmations`（Migration 003），`check_items` 以 JSONB 儲存逐項結果
+- **API**：`GET /api/uat/history`（最近 100 筆）、`POST /api/uat/confirm`
 
 ## 效期計算邏輯（WMSM020）
 

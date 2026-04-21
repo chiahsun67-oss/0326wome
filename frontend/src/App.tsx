@@ -60,7 +60,7 @@ export default function App() {
           {current === 'm030'    && <WMSM030 onToast={showToast} />}
           {current === 'label'   && <LabelPreview />}
           {current === 'history' && <PrintHistory />}
-          {current === 'confirm' && <UATConfirm onToast={showToast} />}
+          {current === 'confirm' && <UATConfirm onToast={showToast} user={user} />}
         </div>
       </div>
 

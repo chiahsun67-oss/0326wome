@@ -5,7 +5,7 @@ import { getProductByCode, searchProducts } from '../controllers/products';
 import { getPurchaseOrder } from '../controllers/purchaseOrders';
 import { createPrintJob, getPrintHistory, getPrintStats, getOperators } from '../controllers/printJobs';
 import { previewImport, executeImport, downloadTemplate } from '../controllers/imports';
-import { saveUATConfirmation } from '../controllers/uat';
+import { saveUATConfirmation, getUATHistory } from '../controllers/uat';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -33,6 +33,7 @@ router.post('/import/preview', upload.single('file'), previewImport);
 router.post('/import/execute', executeImport);
 
 // UAT
+router.get('/uat/history', getUATHistory);
 router.post('/uat/confirm', saveUATConfirmation);
 
 export default router;

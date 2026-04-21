@@ -1,4 +1,4 @@
-import { ApiResponse, ImportPreviewResult, PrintHistoryItem, PrintStats, Product, PurchaseOrder, UserInfo } from '../types';
+import { ApiResponse, ImportPreviewResult, PrintHistoryItem, PrintStats, Product, PurchaseOrder, UATHistoryItem, UserInfo } from '../types';
 
 const BASE = '/api';
 
@@ -67,12 +67,14 @@ export const api = {
   executeImport: (batch_no: string, operator: string) =>
     post<{ job_no: string; total_copies: number }>('/import/execute', { batch_no, operator }),
 
+  getUATHistory: () => get<UATHistoryItem[]>('/uat/history'),
+
   saveUATConfirmation: (payload: {
     confirmer_name: string;
     department: string;
     confirm_date: string;
     result: string;
-    check_items: Record<string, boolean>;
+    check_items: Record<string, { checked: boolean; error_type: string; suggestion: string }>;
     remarks: string;
   }) => post('/uat/confirm', payload),
 };

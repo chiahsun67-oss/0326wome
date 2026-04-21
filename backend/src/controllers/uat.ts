@@ -2,6 +2,20 @@ import { Request, Response } from 'express';
 import pool from '../db';
 import { ApiResponse, UATConfirmRequest } from '../types';
 
+export async function getUATHistory(_req: Request, res: Response): Promise<void> {
+  try {
+    const result = await pool.query(
+      `SELECT id, confirmer_name, department, confirm_date, result, check_items, remarks, version, created_at
+       FROM uat_confirmations
+       ORDER BY created_at DESC
+       LIMIT 100`
+    );
+    res.json({ success: true, data: result.rows } satisfies ApiResponse);
+  } catch (err) {
+    res.status(500).json({ success: false, error: String(err) } satisfies ApiResponse);
+  }
+}
+
 export async function saveUATConfirmation(req: Request, res: Response): Promise<void> {
   const body = req.body as UATConfirmRequest;
 

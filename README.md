@@ -69,7 +69,7 @@ npm run dev                  # 啟動於 http://localhost:5173
 | WMSM030 | Tab 2 | Excel 批次匯入（.xlsx 驗證預覽、執行後開啟列印視窗） |
 | 標籤預覽 | Tab 3 | 8×11cm 標籤樣式確認 |
 | 列印紀錄 | Tab 4 | 歷史查詢、重複列印偵測 |
-| 確認簽核 | Tab 5 | UAT 勾選清單 + 主管簽核 |
+| 確認簽核 | Tab 5 | UAT 驗收（✓ 正常 / ✗ 錯誤雙按鈕、進度條、主管簽核、歷程查詢） |
 
 ---
 
@@ -89,6 +89,7 @@ npm run dev                  # 啟動於 http://localhost:5173
 | GET | `/api/import/template` | 下載 Excel 範本（10 欄） |
 | POST | `/api/import/preview` | 上傳 .xlsx 驗證預覽 |
 | POST | `/api/import/execute` | 執行批次列印（WMSM030） |
+| GET | `/api/uat/history` | 查詢 UAT 簽核歷程（最近 100 筆） |
 | POST | `/api/uat/confirm` | 儲存 UAT 簽核 |
 | GET | `/api/db-check` | DB 連線診斷 |
 | GET | `/health` | 服務健康檢查 |

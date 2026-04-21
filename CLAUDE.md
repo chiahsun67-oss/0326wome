@@ -21,7 +21,9 @@
 ├── CLAUDE.md                       ← 專案記憶（你在這裡）
 ├── README.md                       ← 快速啟動指南
 ├── database/
-│   └── schema.sql                  ← PostgreSQL DDL + 種子資料（密碼已 bcrypt）
+│   ├── schema.sql                  ← PostgreSQL DDL + 種子資料（密碼已 bcrypt）
+│   └── migrations/
+│       └── 003_add_uat_confirmations.sql ← UAT 簽核資料表
 ├── backend/                        ← Express + TypeScript
 │   ├── .env                        ← DB 設定（已建立）
 │   ├── .env.example
@@ -36,7 +38,7 @@
 │   │       ├── purchaseOrders.ts
 │   │       ├── printJobs.ts
 │   │       ├── imports.ts          ← xlsx 解析 + 驗證
-│   │       └── uat.ts
+│   │       └── uat.ts              ← getUATHistory + saveUATConfirmation
 │   └── package.json
 ├── frontend/                       ← React + TSX + Vite
 │   ├── src/
@@ -54,7 +56,7 @@
 │   │   │   ├── WMSM030/index.tsx   ← Excel 批次匯入（含列印視窗）
 │   │   │   ├── LabelPreview/index.tsx
 │   │   │   ├── PrintHistory/index.tsx
-│   │   │   └── UATConfirm/index.tsx
+│   │   │   └── UATConfirm/index.tsx ← 驗收簽核（✓/✗ 雙按鈕 + 進度條）
 │   │   └── styles/globals.css
 │   └── vite.config.ts              ← proxy /api → localhost:3000
 ├── docs/
@@ -74,6 +76,13 @@
 | `executeImport` BEGIN 後早期 return 無 ROLLBACK | 事務懸掛 | 兩個早期 return 前加 `await client.query('ROLLBACK')` |
 | 密碼明文儲存 | auth.ts 直接比對字串 | 改用 `bcrypt`（cost=10），schema 種子資料更新為 hash |
 | 列印視窗 XSS | 品號/品名直接插入 HTML | `printLabels.ts` 加 `esc()` HTML escape |
+
+## UAT 確認頁設計規範（UATConfirm/index.tsx）
+- **狀態**：`status: Record<string, 'pass' | 'fail'>` tri-state（undefined = 未作答）
+- **操作**：圓形雙按鈕 — 綠色 ✓ 正常 / 紅色 ✗ 錯誤（取代舊版 checkbox）
+- **修改建議**：僅當該項標記為 `fail` 時才展開顯示，`pass` 時自動清空並隱藏
+- **進度條**：卡片 header 下方 6px 橘紅漸層（`#f97316 → #dc2626`），有進度時有流光動畫
+- **Payload**：`checked = status === 'pass'`；`error_type / suggestion` 僅在 fail 時帶入
 
 ## 環境設定（backend/.env）
 ```

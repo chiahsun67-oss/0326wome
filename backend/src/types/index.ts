@@ -136,12 +136,18 @@ export interface ImportPreviewResult {
 }
 
 // ── UAT 簽核 ──────────────────────────────────────────────
+export interface UATCheckItemPayload {
+  checked: boolean;
+  error_type: string;   // '' | 'display' | 'field' | 'function' | 'flow' | 'other'
+  suggestion: string;
+}
+
 export interface UATConfirmRequest {
   confirmer_name: string;
   department: string;
   confirm_date: string;
   result: 'pass' | 'conditional_pass' | 'fail';
-  check_items: Record<string, boolean>;
+  check_items: Record<string, UATCheckItemPayload>;
   remarks: string;
 }
 

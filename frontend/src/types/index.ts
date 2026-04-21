@@ -95,6 +95,24 @@ export interface PrintStats {
   today_jobs: number;
 }
 
+export interface UATCheckItemResult {
+  checked: boolean;
+  error_type: string;
+  suggestion: string;
+}
+
+export interface UATHistoryItem {
+  id: number;
+  confirmer_name: string;
+  department: string;
+  confirm_date: string;
+  result: 'pass' | 'conditional_pass' | 'fail';
+  check_items: Record<string, UATCheckItemResult>;
+  remarks: string;
+  version: string;
+  created_at: string;
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;

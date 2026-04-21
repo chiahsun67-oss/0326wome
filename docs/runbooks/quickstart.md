@@ -16,12 +16,15 @@ createdb wmsm
 
 # 匯入 Schema 與種子資料（約 10 秒）
 psql wmsm -f database/schema.sql
+
+# 套用 Migration 003（UAT 簽核資料表）
+psql -U postgres -d wmsm -f database/migrations/003_add_uat_confirmations.sql
 ```
 
 驗證：
 ```bash
 psql wmsm -c "\dt"
-# 應看到 9 張資料表 + 2 個 view
+# 應看到 10 張資料表 + 2 個 view（含 uat_confirmations）
 ```
 
 ---
@@ -98,6 +101,7 @@ npm run dev
 | GET | `/api/import/template` | 下載 Excel 範本 |
 | POST | `/api/import/preview` | Excel 驗證預覽 |
 | POST | `/api/import/execute` | 執行批次列印（WMSM030） |
+| GET | `/api/uat/history` | UAT 簽核歷程（最近 100 筆） |
 | POST | `/api/uat/confirm` | UAT 簽核 |
 | GET | `/api/db-check` | DB 連線診斷 |
 
