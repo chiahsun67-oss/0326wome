@@ -75,9 +75,12 @@ sequence 必須事先存在才不會報錯，trigger 則是 execution-time。
 `api/client.ts` 使用 `res.text()` 先讀取 response body，再嘗試 `JSON.parse`，
 避免空 body 或非 JSON 回應造成 `SyntaxError`。
 
-### 5. Vite Proxy
-開發時前端 proxy `/api/*` 至 `http://localhost:3000`（後端 port），
-生產環境需自行設定 Nginx/reverse proxy。
+### 5. Vite Proxy 與生產環境同源
+開發時前端 proxy `/api/*` 至 `http://localhost:3000`（後端 port）。
+生產環境改為**單一 Node 程序同時服務 API 與前端靜態檔**，避免 CORS 與反向代理維運負擔：
+- `backend/src/app.ts` 在偵測到 `frontend/dist/index.html` 存在時，掛上 `express.static(frontendDist)` 與 SPA fallback（排除 `/api/*`）
+- 開發環境因無 `frontend/dist/` 而自動跳過，行為不變
+- CORS 白名單由 `CORS_ORIGIN` 環境變數（逗號分隔）控制，預設 `http://localhost:5173,http://localhost:3000`
 
 ### 6. 密碼安全
 `auth.ts` 使用 `bcrypt.compare()`（cost=10）驗證密碼，明文密碼不落地。
@@ -107,6 +110,31 @@ exp + shelf → mfg  = addDays(exp, -shelf)
 ```
 
 此邏輯實作於前端 `pages/WMSM020/index.tsx: handleExpiryChange()`。
+
+## 佈署拓撲（Windows Server 內網）
+
+```
+使用者瀏覽器
+    │  http://wmsm.company.local/
+    ▼
+┌──────────────────────────────────────────┐
+│  Windows Service: WMSM (nssm)             │
+│  node dist/app.js                         │
+│  ├─ /api/*      → Express routes          │
+│  ├─ /health     → 健康檢查                │
+│  └─ /*          → frontend/dist (SPA)     │
+│       (fallback 排除 /api)                │
+└────────────────┬─────────────────────────┘
+                 │ pg Pool
+┌────────────────▼─────────────────────────┐
+│  PostgreSQL Service (postgresql-x64-16)  │
+│  DB: wmsm  role: wmsm_app                │
+└──────────────────────────────────────────┘
+```
+
+- nssm 設定 `DependOnService=postgresql-x64-16`，DB 先啟動
+- Log 輸出 `C:\wmsm\logs\stdout.log` / `stderr.log`，10 MB 自動輪替
+- 部署腳本：`scripts/install-nssm.ps1`、`scripts/deploy-service.ps1`
 
 ## Excel 匯入驗證流程（WMSM030）
 

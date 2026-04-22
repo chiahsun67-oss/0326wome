@@ -1,6 +1,8 @@
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 import routes from './routes';
 import pool from './db';
 
@@ -9,7 +11,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT ?? 3000;
 
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3000'] }));
+const corsOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://localhost:3000')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+app.use(cors({ origin: corsOrigins }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -38,6 +44,16 @@ app.get('/api/db-check', async (_req, res) => {
     res.status(500).json({ status: 'error', error: String(err) });
   }
 });
+
+// 正式環境：同一程序服務已建置的前端靜態檔
+const frontendDist = path.resolve(__dirname, '../../frontend/dist');
+if (fs.existsSync(path.join(frontendDist, 'index.html'))) {
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
 
 // 全域錯誤 middleware — 確保所有未捕捉的錯誤都回傳 JSON（不回傳空 body）
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

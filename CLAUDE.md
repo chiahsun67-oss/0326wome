@@ -63,6 +63,11 @@
 │   ├── architecture.md
 │   ├── decisions/                  ← ADR 架構決策紀錄
 │   └── runbooks/                   ← 操作手冊
+├── scripts/                        ← 部署腳本（PowerShell）
+│   ├── install-nssm.ps1            ← 安裝 nssm（choco/scoop/手動下載）
+│   ├── deploy-service.ps1          ← Build + 註冊 Windows Service
+│   └── README.md                   ← 部署流程說明
+├── TEST.md                         ← 正式機佈署計劃（DNS/DB/備份）
 └── .claude/skills/                 ← /code-review /refactor /release
 ```
 
@@ -92,7 +97,17 @@ DB_PORT=5432
 DB_NAME=wmsm
 DB_USER=postgres
 DB_PASSWORD=（你的密碼）
+# CORS 白名單（逗號分隔）；正式機同源可留空或填佈署網址
+CORS_ORIGIN=http://localhost:5173,http://localhost:3000
+NODE_ENV=development
 ```
+
+## 正式部署（Windows Server）
+- 架構：單一 Node 程序同時服務 `/api/*` 與 `frontend/dist/*`（同源，無 CORS 問題）
+- `backend/src/app.ts` 會在偵測到 `frontend/dist/index.html` 存在時啟用靜態檔 + SPA fallback，dev 環境不受影響
+- 以 `nssm` 註冊 Windows Service（依賴 `postgresql-x64-16`、log rotation 10MB）
+- 執行腳本：`scripts/install-nssm.ps1` + `scripts/deploy-service.ps1`
+- 完整佈署規劃見 `TEST.md`（DNS、防火牆、DB 角色、pg_dump 備份排程）
 
 ## 常用指令
 ```bash

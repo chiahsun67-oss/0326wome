@@ -106,9 +106,32 @@ npm run dev                  # 啟動於 http://localhost:5173
 
 ---
 
+## 正式部署（Windows Server + nssm）
+
+採用單一 Node.js 程序同時服務 API 與前端靜態檔；以 `nssm` 註冊為 Windows Service。
+
+```powershell
+# 以系統管理員執行 PowerShell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
+# 1) 安裝 nssm（自動偵測 choco / scoop，否則下載 2.24 版）
+cd D:\wmsm\scripts   # 或專案路徑下的 scripts/
+.\install-nssm.ps1
+
+# 2) Build + 註冊服務 + 啟動（預設 AppRoot=C:\wmsm）
+.\deploy-service.ps1 -AppRoot 'D:\wmsm' -ServiceName 'WMSM'
+```
+
+- 詳細步驟與可選參數見 [`scripts/README.md`](scripts/README.md)
+- 完整佈署規劃（DNS、防火牆、DB 角色、備份）見 [`TEST.md`](TEST.md)
+- 後端 `app.ts` 偵測 `frontend/dist/index.html` 存在時才啟用靜態檔 + SPA fallback；CORS 改由 `CORS_ORIGIN` 環境變數控制
+
+---
+
 ## 專案文件
 
 - [架構總覽](docs/architecture.md)
 - [架構決策紀錄](docs/decisions/)
 - [操作手冊](docs/runbooks/)
 - [快速啟動](docs/runbooks/quickstart.md)
+- [部署腳本](scripts/README.md)
