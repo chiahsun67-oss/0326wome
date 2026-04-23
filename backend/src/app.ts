@@ -25,8 +25,13 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// 診斷：測試 DB 連線 + 列出所有資料表
-app.get('/api/db-check', async (_req, res) => {
+// 診斷：測試 DB 連線 + 列出所有資料表（僅限本機存取，避免對外洩漏 schema）
+app.get('/api/db-check', async (req, res) => {
+  const ip = req.socket.remoteAddress ?? '';
+  const isLocal = ip === '::1' || ip === '127.0.0.1' || ip === '::ffff:127.0.0.1';
+  if (!isLocal) {
+    return res.status(404).send('Cannot GET /api/db-check');
+  }
   try {
     const result = await pool.query(`
       SELECT table_name

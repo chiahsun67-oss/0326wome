@@ -134,4 +134,5 @@ cd D:\wmsm\scripts   # 或專案路徑下的 scripts/
 - [架構決策紀錄](docs/decisions/)
 - [操作手冊](docs/runbooks/)
 - [快速啟動](docs/runbooks/quickstart.md)
+- [對外公開（Cloudflare Tunnel）](docs/runbooks/tunnel-restart.md)
 - [部署腳本](scripts/README.md)
