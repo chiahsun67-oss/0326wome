@@ -95,7 +95,7 @@ WMSM020 與 WMSM030 共用。所有動態欄位（品號、品名、日期）透
 ### 8. UAT 驗收確認頁（UATConfirm）
 - **狀態機**：每個確認項目為 tri-state — `undefined`（未作答）/ `'pass'`（綠勾）/ `'fail'`（紅叉）
 - **UI**：圓形雙按鈕取代 checkbox；標記 `fail` 時才展開「錯誤類型 + 修改建議」
-- **進度條**：`doneCount / total` 橘紅漸層，有進度時附流光 CSS animation
+- **進度條**：`doneCount / total` — 高度 20px，未完成底色紅 `#dc2626`、已完成填充翠綠水平漸層（`#10b981 → #34d399 → #6ee7b7`），有進度時附流光 CSS animation；中央疊加 18px 白色 `NN%`（含陰影）
 - **資料表**：`uat_confirmations`（Migration 003），`check_items` 以 JSONB 儲存逐項結果
 - **API**：`GET /api/uat/history`（最近 100 筆）、`POST /api/uat/confirm`
 

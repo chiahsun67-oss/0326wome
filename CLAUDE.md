@@ -86,7 +86,7 @@
 - **狀態**：`status: Record<string, 'pass' | 'fail'>` tri-state（undefined = 未作答）
 - **操作**：圓形雙按鈕 — 綠色 ✓ 正常 / 紅色 ✗ 錯誤（取代舊版 checkbox）
 - **修改建議**：僅當該項標記為 `fail` 時才展開顯示，`pass` 時自動清空並隱藏
-- **進度條**：卡片 header 下方 6px 橘紅漸層（`#f97316 → #dc2626`），有進度時有流光動畫
+- **進度條**：卡片 header 下方 20px，未完成底色紅 `#dc2626`、已完成填充翠綠水平漸層（`#10b981 → #34d399 → #6ee7b7`），有進度時流光動畫；中央疊加 18px 白色置中 `NN%`（含陰影）
 - **Payload**：`checked = status === 'pass'`；`error_type / suggestion` 僅在 fail 時帶入
 
 ## 環境設定（backend/.env）

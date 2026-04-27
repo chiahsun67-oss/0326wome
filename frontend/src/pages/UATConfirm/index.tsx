@@ -62,6 +62,7 @@ export default function UATConfirm({ onToast, user }: Props) {
 
   const allowed   = canConfirm(user.role);
   const doneCount = Object.keys(status).filter((k) => status[k] !== undefined).length;
+  const percent   = Math.round((doneCount / CHECK_ITEMS.length) * 100);
 
   const setItemStatus = (key: string, val: 'pass' | 'fail') => {
     if (!allowed) return;
@@ -151,23 +152,40 @@ export default function UATConfirm({ onToast, user }: Props) {
         <div className="card-header">
           <div className="card-title">📋 確認項目</div>
           <span className={`badge ${doneCount === CHECK_ITEMS.length ? 'badge-ok' : doneCount > 0 ? 'badge-warn' : 'badge-pending'}`}>
-            {doneCount} / {CHECK_ITEMS.length} 已確認
+            {doneCount} / {CHECK_ITEMS.length} 已確認 · {percent}%
           </span>
         </div>
 
         {/* 進度條 */}
-        <div style={{ height: '6px', background: 'var(--g2)', overflow: 'hidden' }}>
+        <div style={{ position: 'relative', height: '20px', background: '#dc2626', overflow: 'hidden', margin: '10px 0' }}>
           <div
             style={{
               height: '100%',
-              width: `${(doneCount / CHECK_ITEMS.length) * 100}%`,
-              background: 'linear-gradient(90deg, #f97316, #dc2626)',
+              width: `${percent}%`,
+              background: 'linear-gradient(90deg, #10b981, #34d399, #6ee7b7)',
               backgroundSize: '200% 100%',
               animation: doneCount > 0 ? 'uat-bar-shine 1.8s linear infinite' : 'none',
               transition: 'width 0.35s ease',
-              borderRadius: '0 3px 3px 0',
             }}
           />
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              lineHeight: 1,
+              fontWeight: 800,
+              color: '#fff',
+              letterSpacing: '.04em',
+              textShadow: '0 1px 3px rgba(0,0,0,.55)',
+              pointerEvents: 'none',
+            }}
+          >
+            {percent}%
+          </div>
         </div>
         <style>{`
           @keyframes uat-bar-shine {
